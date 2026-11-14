@@ -237,6 +237,29 @@ input.num{font-size:16px;padding:11px 10px}
 .head .monthnav .ib{width:34px;height:40px;flex:none}
 .head .monthnav h1{width:114px;min-width:0;padding:0;white-space:nowrap;font-size:15px;line-height:1;text-align:center}
 .head #status{justify-self:end;max-width:100%;min-width:0;font-size:11.5px;padding:6px 8px;line-height:1.2;overflow:hidden;text-overflow:ellipsis}
+/* Charges : même UX que Synthèse */
+.fxh{display:flex;align-items:center;gap:16px}
+.fxh .rwrap{flex:none}
+.fxh .stat{min-width:0}
+.lbl2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.bigv{font:600 24px var(--mono);margin:4px 0 2px;letter-spacing:-.02em}
+.bigv .muted{font-size:14px;font-weight:400}
+.syn .grp{margin:0 0 6px;padding-bottom:8px;border-bottom:1px solid var(--line);align-items:center}
+.syn .grp b{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.syn .grp .gc{margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--line);font-size:11px;letter-spacing:0;color:var(--ink)}
+.syn .grp .n{font-size:14px;color:var(--ink)}
+.syn .row{border-top:0;border-bottom:1px solid var(--line)}
+.syn .row:last-child{border-bottom:0}
+.row .nm{display:block;font-weight:600;font-size:16px;line-height:1.25;color:var(--ink)}
+.row.is-done .nm{color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tag{display:inline-flex;align-items:center;font-size:11.5px;line-height:1.25;padding:3px 9px;border-radius:99px;border:1px solid var(--line);font-weight:500;color:var(--muted)}
+.tag.tg{color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+.tag.tw{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.tag.tb{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.btn.lnk{background:transparent;border:1px dashed var(--border-strong,var(--line));color:var(--accent)}
+.form .add{grid-column:1/-1;justify-self:end;width:auto;min-height:40px;padding:8px 22px;font-size:14px;border-radius:12px}
+.head .monthnav h1{width:132px}
 </style>
 </head>
 <body>
@@ -653,18 +676,19 @@ function fxSheet(x,m){
     (L.length?L.map(function(t){var ex=Math.abs(Math.abs(t.amount)-x.planned)<0.015;
       return '<div class="todo tap" role="button" data-fx="link" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+(ex?' ✓':'')+'</b><small class="muted">'+esc(t.date||'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération disponible ce mois-ci.</div>')+
     '<button class="btn" style="margin-top:8px" data-fx="close">Fermer</button></div>'}
+var fixLast=0;
 function vFix(m,c){
   var groups=GROUPS.slice(); m.fixed.forEach(function(x){if(groups.indexOf(x.group)<0)groups.push(x.group)});
   var html=groups.map(function(g){
     var items=m.fixed.filter(function(x){return x.group===g}); if(!items.length)return '';
     var tp=sum(items,function(x){return x.planned});
-    return '<section class="card"><div class="grp"><b>'+esc(g)+'</b><span class="n">'+fmt(tp)+'</span></div>'+
+    return '<section class="card"><div class="grp"><b>'+esc(g)+' <span class="gc">'+items.filter(function(x){return x.paid}).length+'/'+items.length+'</span></b><span class="n">'+fmt(tp)+'</span></div>'+
       items.map(function(x){
         var dv=x.paid?x.actual-x.planned:0;
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque</small>':'')+(!col&&bank.token&&bank.tx&&!fr?(x.bankId&&x.btx?'<button class="btn mini" style="margin-top:6px" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini" style="margin-top:6px" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div>'+
+        '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags">'+(NOTES[x.tid]?'<span class="tag tw">'+esc(NOTES[x.tid])+'</span>':'')+(fr?'<span class="tag tb">reportée de '+esc(ymLabel(fr))+'</span>':'')+(x.paid&&Math.abs(dv)>=0.5?'<span class="tag '+(dv>0?'tb':'tg')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</span>':'')+(x.bank?'<span class="tag tg">✓ Vu en banque</span>':'')+(!col&&bank.token&&bank.tx&&!fr?(x.bankId&&x.btx?'<button class="btn mini lnk" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini lnk" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div></div>'+
         '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
         '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>'+(fx.id===x.id?fxSheet(x,m):'');
       }).join('')+'</section>';
@@ -672,14 +696,15 @@ function vFix(m,c){
   var gopts=GROUPS.map(function(g){return '<option>'+esc(g)+'</option>'}).join('');
   var nCar=Object.keys(m.carry||{}).length;
   var carNote=nCar?'<div class="note warn">'+nCar+' charge'+(nCar>1?'s reportées':' reportée')+' de mois précédents : elles restent ici tant qu’elles ne sont pas cochées.</div>':(m.carriedOut?'<div class="note">'+m.carriedOut+' charge'+(m.carriedOut>1?'s non payées reportées':' non payée reportée')+' sur '+esc(ymLabel(CUR))+'.</div>':'');
-  return '<section class="card"><div class="grp"><b>Total charges (fixes + prévisionnelles)</b><span class="n">'+fmt(c.fixedPaid)+' payé / '+fmt(c.fixedPlanned)+'</span></div>'+bar(c.fixedPaid,c.fixedPlanned)+
+  var unp=m.fixed.filter(function(x){return !x.paid}).length,fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unp?'o':'g',nowT=Date.now(),an=nowT-fixLast>5000;fixLast=nowT;
+  return '<div class="syn'+(an?' an':'')+'" style="display:contents"><section class="card"><div class="fxh"><div class="rwrap">'+ringSvg(fp,fk)+'<div class="rv">'+Math.round(fp)+'%</div></div><div class="stat"><div class="lbl2">Charges du mois</div><div class="bigv">'+fmt(c.fixedPaid)+' <span class="muted">/ '+fmt(c.fixedPlanned)+'</span></div><div class="small '+(unp?'muted':'pos')+'">'+(unp?unp+' à payer · reste '+fmt(c.fixedRemain):'Tout est payé')+'</div></div></div>'+
     '<p class="small muted" style="margin:12px 0 0">Coche = payé · le montant est modifiable</p>'+carNote+'</section>'+
     (html||'<div class="empty card">Aucune charge. Ajoute-en ici ou dans l’onglet Modèle.</div>')+
     '<section class="card"><h2>Ajouter une charge pour ce mois</h2><form class="form" data-form="add-fixed">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary full" type="submit">Ajouter</button></form></section>';
+      '<button class="btn primary add" type="submit">Ajouter</button></form></section></div>';
 }
 
 function restoOf(m){return typeof m.resto==='number'?m.resto:(typeof state.config.resto==='number'?state.config.resto:60)}
