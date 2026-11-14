@@ -613,15 +613,15 @@ function vDep(m,c){
   var ex=m.extras.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var copts=CATS.map(function(k){return '<option>'+esc(k)+'</option>'}).join('');
   var list=ex.map(function(e){
-    return '<div class="line"><span class="t">'+esc(e.label)+'<br><span class="small muted">'+esc(e.date||'')+' · '+esc(e.cat)+(e.grp?' · débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)':'')+'</span>'+(e.grp&&e.btx?'<br><button class="btn" style="padding:2px 10px;margin-top:6px" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span>'+
-      '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>';
+    return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t">'+esc(e.label)+'<br><span class="small muted">'+esc(e.date||'')+' · '+esc(e.cat)+(e.grp?' · débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)':'')+'</span>'+(e.grp&&e.btx?'<br><button class="btn" style="padding:2px 10px;margin-top:6px" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span>'+
+      '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
   return '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
     '<div class="line" style="border:0"><span class="small muted">Dépensé / enveloppe du mois</span>'+
     '<span class="n small">'+fmt(c.coursesSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-courses="1" value="'+inp(c.coursesPlanned)+'" aria-label="Enveloppe courses"></span></div>'+
     '<div class="line"><span class="small muted">Tickets resto <span class="muted">(en plus, hors PAF)</span></span>'+
     '<span class="n small"><input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Tickets resto"></span></div></section>'+
-    vLink(m)+
+    vLink(m)+vPick(m)+
     '<section class="card"><h2>Ajouter une dépense</h2><form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
       '<select name="cat" aria-label="Catégorie">'+copts+'</select>'+
@@ -712,7 +712,7 @@ function bkClean(l){var s=String(l||'');
 function bkTitle(t){var c=bkClassify(t);
   if(c.k==='fixed'){var f=state.config.fixed.filter(function(x){return x.id===c.tid})[0];return f?f.label:bkClean(t.label)}
   if(c.k==='paf')return 'PAF '+c.who;return bkClean(t.label)}
-var bs={id:null};
+var bs={id:null,pick:false},ed={id:null};
 function bsExtra(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.bankId===t.id})[0]||null:null}
 function bsGrp(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.grp===t.id}):[]}
 function bsFixed(t,m){var c=bkClassify(t),amt=Math.abs(t.amount);if(c.k!=='fixed')return null;
@@ -730,8 +730,23 @@ function bsSheet(t){
     (m&&lkLines(m).length?'<button class="btn" data-bs="link">Rattacher à des achats saisis</button>':'')+
     '<button class="btn" data-bs="close">Fermer</button></div></div>';
   return h}
-function bkChip(t){var c=bkClassify(t),o='',be=t.amount<0?bsExtra(t):null;
-  if(be)o='<span class="tg">'+esc(be.cat)+'</span>';else if(t.amount<0&&bsGrp(t).length)o='<span class="tg ok">Débit groupé</span>';else
+function vPick(m){
+  if(col||!bank.token||!bank.tx)return '';
+  if(!bs.pick)return '<section class="card"><div class="grp"><b>Depuis Fortuneo</b></div><p class="small muted" style="margin:6px 0 12px">Compter une opération bancaire comme dépense (ex. un achat pris à tort pour une charge).</p><button class="btn" data-bs="pick">Choisir une opération</button></section>';
+  var L=bank.tx.filter(function(t){return t.id&&!t.pending&&t.amount<0&&bkMonthKey(t)===ym&&!bsExtra(t)&&!bsGrp(t).length}).sort(function(a,b){return a.date<b.date?1:-1});
+  return '<section class="card"><h2>Opérations non comptées en dépense</h2>'+(L.length?L.map(function(t){
+    var fx=bsFixed(t,m);
+    return '<div class="todo tap'+(bs.id===t.id?' on':'')+'" role="button" data-bs="open" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+'</b><small class="muted">'+esc(t.date||'')+(fx?' · charge cochée':'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'+(bs.id===t.id?bsSheet(t):'')}).join(''):'<div class="empty">Toutes les sorties du mois sont déjà comptées.</div>')+
+    '<button class="btn" style="margin-top:10px" data-bs="pick">Fermer</button></section>'}
+function edSheet(e){
+  var f=!!e.bankId;
+  return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
+    '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
+    '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="ed-amount" inputmode="decimal" value="'+inp(e.amount)+'"'+(f?' disabled':'')+' aria-label="Montant" style="flex:1;min-width:0"><input type="date" id="ed-date" value="'+esc(e.date||'')+'"'+(f?' disabled':'')+' aria-label="Date" style="flex:1;min-width:0"></div>'+
+    (f?'<p class="small muted" style="margin:0 0 8px">Opération Fortuneo : montant et date non modifiables.</p>':'')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-ed="save">Enregistrer</button><button class="btn" data-ed="close">Fermer</button></div></div>'}
+function bkChip(t){var c=bkClassify(t),o='';
   if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
   else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
   var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))o+='<span class="tg warn">→ '+esc(ymLabel(mk))+'</span>';
@@ -766,7 +781,7 @@ function vBank(){
     var seg=[['all','Tout'],['fix','Charges'],['ex','Dépenses'],['other','À classer'],['in','Entrées']].map(function(x){return '<button class="chip seg'+(f===x[0]?' on':'')+'" data-bank="filter" data-v="'+x[0]+'">'+x[1]+'</button>'}).join('');
     var days={},order=[];fl.forEach(function(t){if(!days[t.date]){days[t.date]=[];order.push(t.date)}days[t.date].push(t)});order.sort().reverse();
     var body=order.map(function(d){var dl=new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-      return '<div class="day">'+esc(dl)+'</div>'+days[d].map(function(t){var op=t.id&&!t.pending;return '<div class="line tx'+(op?' tap':'')+'"'+(op?' role="button" data-bs="open" data-id="'+esc(t.id)+'"':'')+'><span class="t">'+esc(bkTitle(t))+'<br>'+bkChip(t)+'</span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'+(op&&bs.id===t.id?bsSheet(t):'')}).join('')}).join('');
+      return '<div class="day">'+esc(dl)+'</div>'+days[d].map(function(t){return '<div class="line tx"><span class="t">'+esc(bkTitle(t))+'<br>'+bkChip(t)+'</span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join('')}).join('');
     h+='<div class="grid2"><div class="kpi"><div class="l">Entrées</div><div class="v pos">'+fmt(tin)+'</div></div><div class="kpi"><div class="l">Sorties</div><div class="v neg">'+fmt(tout)+'</div></div></div>'+
       '<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="segs">'+seg+'</div>'+(body||'<div class="empty">Aucune opération.</div>')+
       (bank.fetched?'<div class="small muted" style="margin-top:14px">Mis à jour à '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')+'</section>';
@@ -774,9 +789,19 @@ function vBank(){
   return h;
 }
 document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-ed]');if(!t||e.target.closest('[data-act],[data-lk]'))return;var a=t.dataset.ed;
+  if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;render()}
+  else if(a==='close'){ed.id=null;render()}
+  else if(a==='save'){var m=editM(ym),x=findBy(m.extras,ed.id);if(!x)return;
+    var lb=String($('#ed-label').value||'').trim();if(lb)x.label=lb.slice(0,48);x.cat=$('#ed-cat').value||x.cat;
+    if(!x.bankId){var am=num($('#ed-amount').value);if(am>0)x.amount=am;var dt=$('#ed-date').value;if(dt)x.date=dt}
+    ed.id=null;commitM()}
+});
+document.addEventListener('click',function(e){
   var t=e.target.closest('[data-bs]');if(!t)return;var a=t.dataset.bs;
   var tx=bs.id&&bank.tx?bank.tx.filter(function(x){return x.id===bs.id})[0]:null;
   if(a==='open'){bs.id=(bs.id===t.dataset.id)?null:t.dataset.id;render()}
+  else if(a==='pick'){bs.pick=!bs.pick;bs.id=null;render()}
   else if(a==='close'){bs.id=null;render()}
   else if((a==='save'||a==='link')&&tx&&tx.amount<0){
     var key=bkMonthKey(tx);if(!key)return;
