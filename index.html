@@ -465,7 +465,7 @@ function vSynth(m,c){
   vTodo(m,c)+
   '<div class="grid2">'+
     (function(){var b=!col&&bank.bal;
-      return '<div class="kpi"><div class="l">Solde Fortuneo</div>'+(b?'<div class="v '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="s">'+(b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'')+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="v muted">—</div><div class="s">'+(bank.token?'Actualise dans l’onglet Banque':'Connexion Fortuneo requise')+'</div>')+'</div>'})()+
+      return '<div class="kpi"><div class="l">Solde Fortuneo</div>'+(b?'<div class="v '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="s">'+(b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'')+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="v muted">—</div><div class="s">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</div>'})()+
     '<div class="kpi tap" role="button" data-act="tab" data-tab="fixes"><div class="l">Reste à payer</div><div class="v">'+fmt(c.fixedRemain)+'</div><div class="s">'+unpaid+' charge'+(unpaid>1?'s':'')+' non cochée'+(unpaid>1?'s':'')+'</div></div>'+
     '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses du mois (courses + autres)</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
@@ -704,7 +704,7 @@ function bankTx(force){
     bank.busy=false;
     if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';
       var nn=bank.tx.filter(function(t){return !oldIds[t.id]}).length;
-      bank.note=force?((oldF&&x.d.fetched_at===oldF)?'Fortuneo n’a pas été réinterrogé (limite d’actualisations atteinte) : données inchangées.':(nn?'Actualisé : '+nn+' nouvelle'+(nn>1?'s':'')+' opération'+(nn>1?'s':'')+'.':'Actualisé : aucune nouvelle opération.')):'';if(x.d.balance&&typeof x.d.balance.amount==='number'){bank.bal={amount:x.d.balance.amount,date:x.d.balance.date||null,at:x.d.fetched_at||new Date().toISOString()};try{localStorage.setItem('budget-bank-bal',JSON.stringify(bank.bal))}catch(e){}}try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
+      bank.note=force?((oldF&&x.d.fetched_at===oldF)?'Fortuneo n’a pas été réinterrogé (limite d’actualisations atteinte) : données inchangées.':(nn?'Actualisé : '+nn+' nouvelle'+(nn>1?'s':'')+' opération'+(nn>1?'s':'')+'.':'Actualisé : aucune nouvelle opération.')):'';bank.balInfo=(x.d.balance===undefined)?'old':(x.d.balance?'':(x.d.balance_error||'absent'));if(x.d.balance&&typeof x.d.balance.amount==='number'){bank.bal={amount:x.d.balance.amount,date:x.d.balance.date||null,at:x.d.fetched_at||new Date().toISOString()};try{localStorage.setItem('budget-bank-bal',JSON.stringify(bank.bal))}catch(e){}}try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
     else bank.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement bancaire a expiré : reconnecte Fortuneo.':'Impossible de récupérer les transactions ('+(x.d&&x.d.error||x.status)+').';
     render()}).catch(bankFail);
 }
