@@ -107,7 +107,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .form .full{grid-column:1/-1}
 .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--glass-b);display:flex;justify-content:center;z-index:6}
 .tabbar nav{display:flex;width:100%;max-width:640px}
-.tabbar button{flex:1;border:0;background:transparent;padding:12px 0 14px;font-size:11px;color:var(--muted);cursor:pointer;border-top:3px solid transparent}
+.tabbar button{flex:1;border:0;background:transparent;padding:12px 0 14px;font-size:10.5px;color:var(--muted);cursor:pointer;border-top:3px solid transparent}
 .tabbar button[aria-current="page"]{color:var(--accent);border-top-color:var(--accent);font-weight:600}
 .note{font-size:12px;padding:7px 9px;border-radius:8px;margin:6px 0}
 .note.warn{background:var(--warn-bg);color:var(--warn)} .note.bad{background:var(--bad-bg);color:var(--bad)}
@@ -145,6 +145,7 @@ textarea{min-height:90px;font-family:var(--mono);font-size:12px}
   <button data-act="tab" data-tab="fixes">Charges</button>
   <button data-act="tab" data-tab="depenses">Dépenses</button>
   <button data-act="tab" data-tab="historique">Historique</button>
+  <button data-act="tab" data-tab="banque">Banque</button>
   <button data-act="tab" data-tab="modele">Modèle</button>
 </nav></div>
 
@@ -547,12 +548,81 @@ function vModel(){
       '<textarea id="bk" placeholder="Colle ici une sauvegarde JSON pour restaurer" style="margin-top:10px" aria-label="Sauvegarde JSON"></textarea><div id="bkmsg" class="small muted" style="margin-top:6px"></div></section>';
 }
 
+/* ---------- Banque (Fortuneo via passerelle Cloudflare) ---------- */
+var BANK_API='https://budget-bank.hasina-rasolo.workers.dev';
+var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false};
+try{bank.token=localStorage.getItem('budget-bank-token')||null}catch(e){}
+function bankCall(path,opts){
+  opts=opts||{};var h={'Content-Type':'application/json'};if(bank.token)h.Authorization='Bearer '+bank.token;
+  opts.headers=h;
+  return fetch(BANK_API+path,opts).then(function(r){return r.json().then(function(d){
+    if(r.status===401&&bank.token&&path!=='/login'){bank.token=null;bank.st=null;try{localStorage.removeItem('budget-bank-token')}catch(e){}}
+    return {ok:r.ok,status:r.status,d:d}})});
+}
+function bankFail(e){bank.busy=false;bank.msg='Passerelle injoignable. Vérifie ta connexion.';render()}
+function bankLoad(){
+  if(!bank.token)return;bank.busy=true;render();
+  bankCall('/status').then(function(x){bank.busy=false;if(x.ok){bank.st=x.d;bank.msg=''}else bank.msg='Session expirée : reconnecte-toi.';render();if(x.ok&&x.d.linked&&!x.d.expired)bankTx(false)}).catch(bankFail);
+}
+function bankTx(force){
+  bank.busy=true;render();
+  bankCall('/transactions'+(force?'?refresh=1':'')).then(function(x){
+    bank.busy=false;
+    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg=''}
+    else bank.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement bancaire a expiré : reconnecte Fortuneo.':'Impossible de récupérer les transactions ('+(x.d&&x.d.error||x.status)+').';
+    render()}).catch(bankFail);
+}
+function vBank(){
+  var h='';
+  if(bank.msg)h+='<div class="note warn">'+esc(bank.msg)+'</div>';
+  if(!bank.token){
+    return h+'<section class="card"><h2>Banque</h2><p class="small muted" style="margin:0 0 10px">Connecte-toi pour afficher les opérations Fortuneo.</p>'+
+      '<form class="form" data-bankform="login"><select name="user" aria-label="Utilisateur"><option value="hasina">Hasina</option><option value="linda">Linda</option></select>'+
+      '<input type="password" name="password" placeholder="Mot de passe" required autocomplete="current-password" aria-label="Mot de passe">'+
+      '<button class="btn primary full" type="submit"'+(bank.busy?' disabled':'')+'>Se connecter</button></form></section>';
+  }
+  var st=bank.st;
+  h+='<section class="card"><h2>Connexion Fortuneo</h2>';
+  if(!st){h+='<div class="small muted">Chargement…</div>'}
+  else if(!st.linked){h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers Fortuneo pour autoriser la lecture des opérations.</p><button class="btn primary" data-bank="connect"'+(bank.busy?' disabled':'')+'>Connecter Fortuneo</button>'}
+  else{
+    var vu=st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null;
+    h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(st.expired?'neg':(days!=null&&days<=10?'neg':'pos'))+'">'+(st.expired?'Consentement expiré':(vu?'valide jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div>'+
+      '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
+      (st.expired||(days!=null&&days<=10)?'<button class="btn primary" data-bank="connect">Renouveler le consentement</button>':'')+
+      '<button class="btn" data-bank="refresh"'+(bank.busy||st.expired?' disabled':'')+'>Actualiser</button></div>';
+  }
+  h+='<div class="small muted" style="margin-top:10px">Connecté : '+esc(st&&st.user||'')+' · <button class="btn" style="padding:2px 8px" data-bank="logout">Déconnexion</button></div></section>';
+  if(bank.tx){
+    var end=ym+'-31',list=bank.tx.filter(function(t){return t.date&&t.date.slice(0,7)===ym});
+    var tin=sum(list,function(t){return t.amount>0?t.amount:0}),tout=sum(list,function(t){return t.amount<0?-t.amount:0});
+    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin-bottom:6px">Entrées '+fmt(tin)+' · Sorties '+fmt(tout)+(bank.fetched?' · mis à jour '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'')+'</div>'+
+      (list.length?list.map(function(t){return '<div class="line"><span class="t">'+esc(t.label||'—')+'<br><span class="small muted">'+esc(t.date)+(t.pending?' · en attente':'')+'</span></span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération ce mois-ci.</div>')+'</section>';
+  }
+  return h;
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-bank]');if(!t)return;var a=t.dataset.bank;
+  if(a==='logout'){bank.token=null;bank.st=null;bank.tx=null;try{localStorage.removeItem('budget-bank-token')}catch(x){}render()}
+  else if(a==='refresh'){bankTx(true)}
+  else if(a==='connect'){bank.busy=true;render();bankCall('/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url){window.location.href=x.d.url}else{bank.busy=false;bank.msg='Connexion à Fortuneo impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(bankFail)}
+});
+document.addEventListener('submit',function(e){
+  var f=e.target.closest('[data-bankform]');if(!f)return;e.preventDefault();
+  var fd=new FormData(f);bank.busy=true;
+  bankCall('/login',{method:'POST',body:JSON.stringify({user:fd.get('user'),password:fd.get('password')})}).then(function(x){
+    bank.busy=false;
+    if(x.ok&&x.d.token){bank.token=x.d.token;try{localStorage.setItem('budget-bank-token',x.d.token)}catch(z){}bank.msg='';render();bankLoad()}
+    else{bank.msg=x.status===429?'Trop de tentatives. Réessaie dans 15 minutes.':'Identifiants incorrects.';render()}
+  }).catch(bankFail);
+});
+
 function render(){
   $('#month').textContent=ymLabel(ym);
   paintStatus();
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===state.tab?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,depenses:vDep,historique:vHist,modele:vModel}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,depenses:vDep,historique:vHist,banque:vBank,modele:vModel}[state.tab];
   var keepFocus=null;
   $('#view').innerHTML=f(m,c);
 }
@@ -650,7 +720,9 @@ document.addEventListener('submit',function(e){
 });
 
 loadLocal();applySeed();applyModel();
+(function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
+if(bank.token)bankLoad();
 initDb();
 })();
 </script>
