@@ -191,6 +191,13 @@ input.num{font-size:16px;padding:11px 10px}
 .menu{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:16px 0;cursor:pointer}
 .menu:first-of-type{border-top:0}
 .menu small{display:block;font-size:13px;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.brk{margin-top:14px;border-top:1px solid var(--line);padding-top:8px}
+.mini{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+.todo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0;border-top:1px solid var(--line);min-height:56px}
+.todo:first-of-type{border-top:0;padding-top:0}
+.todo small{display:block;font-size:13px;margin-top:2px}
+.todo .n{flex:none}
 </style>
 </head>
 <body>
@@ -321,6 +328,7 @@ function calc(m){
   r.creditsPlanned=sum(m.credits,function(x){return eff(x,S)});
   r.creditsReal=sum(m.credits,function(x){return x.done?act(x,S):0});
   r.incProj=sum(m.credits,function(x){return x.done?act(x,S):eff(x,S)});
+  r.incProj+=sum(m.credits,function(x){return (x.kind&&x.done)?Math.max(0,eff(x,S)-act(x,S)):0});
   r.fixedPlanned=sum(m.fixed,function(x){return x.planned});
   r.fixedPaid=sum(m.fixed,function(x){return x.paid?x.actual:0});
   r.fixedRemain=sum(m.fixed,function(x){return x.paid?0:x.planned});
@@ -426,6 +434,20 @@ function vShare(m,c,full){
   return '<section class="card tap" role="button" data-act="tab" data-tab="revenus"><h2>Répartition des charges</h2>'+warn+
     '<div class="line" style="border:0;padding-top:0"><span class="muted small">Charges + courses à financer</span><span class="n"><b>'+fmt(S.base)+'</b></span></div>'+rows+'</section>';
 }
+function vTodo(m,c){
+  var it=[],S=c.S,cn=state.config.contributors;
+  [0,1].forEach(function(i){var name=cn[i]||('Personne '+(i+1));
+    var got=sum(m.credits.filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who===name&&x.done}),function(x){return act(x,S)});
+    var left=Math.round((S.share[i]-got)*100)/100;
+    if(left>0.5)it.push({tab:'revenus',t:name+' : reste à verser',v:fmt(left),cls:'neg',d:'Part '+fmt(S.share[i])+' · déjà versé '+fmt(got)})});
+  var un=m.fixed.filter(function(x){return !x.paid}).sort(function(a,b){return b.planned-a.planned});
+  if(un.length)it.push({tab:'fixes',t:un.length+' charge'+(un.length>1?'s':'')+' à payer',v:fmt(c.fixedRemain),d:un.slice(0,3).map(function(x){return x.label.replace(/\s*\(.*\)$/,'')}).join(', ')+(un.length>3?'…':'')});
+  var st=!col&&bank.st;
+  if(st&&st.linked){var vu=st.valid_until?new Date(st.valid_until):null,dd=vu?Math.ceil((vu-new Date())/864e5):null;
+    if(st.expired||(dd!=null&&dd<=10))it.push({tab:'banque',t:'Renouveler le consentement Fortuneo',v:st.expired?'expiré':dd+' j',cls:'neg'})}
+  if(!col&&syncPending())it.push({act:'sync',t:'Modifications non synchronisées',v:'Valider',d:'Envoie-les pour les retrouver sur l’autre téléphone'});
+  return '<section class="card"><h2>À faire</h2>'+(it.length?it.map(function(x){return '<div class="todo tap" role="button" data-act="'+(x.act||'tab')+'"'+(x.tab?' data-tab="'+x.tab+'"':'')+'><span><b>'+esc(x.t)+'</b>'+(x.d?'<small class="muted">'+esc(x.d)+'</small>':'')+'</span><span class="n '+(x.cls||'')+'">'+esc(x.v||'')+' ›</span></div>'}).join(''):'<div class="empty" style="padding:6px 0">Rien à faire : tout est à jour ✓</div>')+'</section>';
+}
 function vSynth(m,c){
   var cls=c.proj>=0?'pos':'neg';
   var paf=vShare(m,c);
@@ -433,15 +455,18 @@ function vSynth(m,c){
     .sort(function(a,b){return Math.abs(b.actual-b.planned)-Math.abs(a.actual-a.planned)}).slice(0,5)
     .map(function(x){var g=x.actual-x.planned;return '<div class="line"><span>'+esc(x.label)+'</span><span class="n '+(g>0?'neg':'pos')+'">'+sgn(g)+'</span></div>'}).join('');
   var unpaid=m.fixed.filter(function(x){return !x.paid}).length;
+  var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
   return ''+
   '<section class="card hero"><h2>Marge projetée fin de mois</h2><div class="big '+cls+'">'+sgn(c.proj)+'</div>'+
-    '<div class="sub">Revenus '+fmt(c.incProj)+' − fixes '+fmt(c.fixedProj)+' − courses '+fmt(c.coursesProj)+' − autres '+fmt(c.otherExtras)+'</div></section>'+
-  paf+
+    '<div class="brk">'+mini('Reçu à ce jour','+'+fmt(c.creditsReal),'pos')+mini('Encore attendu','+'+fmt(c.incProj-c.creditsReal),'pos')+mini('Charges (payées + à payer)','−'+fmt(c.fixedProj))+mini('Courses','−'+fmt(c.coursesProj))+mini('Autres dépenses','−'+fmt(c.otherExtras))+'</div>'+
+    '<div class="small muted" style="margin-top:8px">Résultat si chacun verse sa part complète.</div></section>'+
+  vTodo(m,c)+
   '<div class="grid2">'+
-    '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div></div>'+
-    '<div class="kpi"><div class="l">Reste à payer (charges)</div><div class="v">'+fmt(c.fixedRemain)+'</div></div>'+
-    '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
+    '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div><div class="s">reçu − payé − dépensé</div></div>'+
+    '<div class="kpi tap" role="button" data-act="tab" data-tab="fixes"><div class="l">Reste à payer</div><div class="v">'+fmt(c.fixedRemain)+'</div><div class="s">'+unpaid+' charge'+(unpaid>1?'s':'')+' non cochée'+(unpaid>1?'s':'')+'</div></div>'+
+    '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses du mois (courses + autres)</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
+  paf+
   '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
     '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div></section>'+
   '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
