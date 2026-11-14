@@ -314,7 +314,7 @@ var uid=function(){return Math.random().toString(36).slice(2,9)};
 var MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 var GROUPS=['Logement','Voiture','Énergie & télécom','Enfants & école','Famille','Ponctuel'];
 var GMAP={loyer:'Logement','ass-hab':'Logement','credit-regroupe':'Voiture',leasing:'Voiture','ass-tcross':'Voiture','ass-bmw':'Voiture','caf-dette':'Ponctuel'};
-function ngrp(g,tid){if(tid&&GMAP[tid])return GMAP[tid];if(g==='Divers'||g==='Assurances'||g==='Crédits & leasing')return 'Ponctuel';return g}
+function ngrp(g,tid,lb){if(tid&&GMAP[tid])return GMAP[tid];if(!tid&&lb&&g!=='Extra'){if(/dette caf|compensation/i.test(lb))return 'Ponctuel';if(/t-?cross|bmw|sofinco|cr[ée]dit regroup|leasing/i.test(lb))return 'Voiture';if(/loyer|habitation/i.test(lb))return 'Logement'}return g==='Divers'?'Ponctuel':g}
 var RESTO='Ticket resto';
 var CATS=['Courses','Ticket resto','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
 var STATUS={
@@ -388,7 +388,7 @@ function getV(key){
 function resetVirt(){Object.keys(virt).forEach(function(k){delete virt[k]})}
 
 /* ---------- calculs ---------- */
-function isX(x){return x.xtra===true||(!x.tid&&x.xtra!==false&&!/demi.?pension|cantine/i.test(x.label||''))}
+function isX(x){return x.xtra===true||(!x.tid&&x.xtra!==false&&!/^s\d{6}\d+$/.test(x.id||'')&&!/demi.?pension|cantine/i.test(x.label||''))}
 function sum(a,f){return a.reduce(function(s,x){return s+f(x)},0)}
 function shares(m){
   var cfg=state.config;
@@ -1285,7 +1285,7 @@ function migModel(){
   if(ch)touch('config');
   Object.keys(state.months).forEach(function(k){
     var m=state.months[k],c2=false;if(!m||!m.fixed)return;
-    m.fixed.forEach(function(x){if(x.group==='Extra')return;var g=ngrp(x.group,x.tid);if(g!==x.group){x.group=g;c2=true}});
+    m.fixed.forEach(function(x){if(x.group==='Extra')return;var g=ngrp(x.group,x.tid,x.label);if(g!==x.group){x.group=g;c2=true}});
     if(k>='2026-12'){var del=m.del||[];cfg.fixed.forEach(function(tp){
       if(!tplOn(tp,k)||m.fixed.some(function(y){return y.tid===tp.id})||del.indexOf(tp.id+'|'+tp.label)>=0)return;
       m.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false});c2=true})}
