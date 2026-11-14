@@ -134,7 +134,7 @@ body::before{opacity:.4}
 .ib{width:40px;height:44px;border-radius:12px}
 .head{gap:6px}
 .monthnav h1{font-size:16px;min-width:112px}
-#status{flex:0 1 auto;min-width:0;max-width:36vw;overflow:hidden;text-overflow:ellipsis}
+#status{cursor:pointer;flex:0 1 auto;min-width:0;max-width:36vw;overflow:hidden;text-overflow:ellipsis}
 .chip{font-size:13px;padding:5px 11px}
 main{padding:18px 0 32px;gap:16px}
 .card,.kpi,.hrow{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);border:1px solid var(--card-line);box-shadow:none;border-radius:var(--r)}
@@ -202,7 +202,7 @@ input.num{font-size:16px;padding:11px 10px}
       <h1 id="month">Mois</h1>
       <button class="ib" data-act="next" aria-label="Mois suivant">›</button>
     </div>
-    <span id="status" class="chip">Chargement…</span>
+    <button id="status" class="chip" type="button" data-act="sync">Synchroniser</button>
   </div>
 </header>
 <main class="wrap" id="view"></main>
@@ -251,7 +251,7 @@ function normCfg(d){
     courses:typeof c.courses==='number'?c.courses:500, resto:typeof c.resto==='number'?c.resto:60,
     fixed:Array.isArray(c.fixed)?c.fixed:[], credits:Array.isArray(c.credits)?c.credits:[],
     incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3322.64,1550],
-    firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500};
+    firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500,_ts:typeof c._ts==='number'?c._ts:0};
 }
 function normMonth(d,key){
   var m=clone(d||{});
@@ -351,8 +351,9 @@ function applyModel(){try{if(localStorage.getItem('budget-model-v')==='2')return
 function docFor(id){return id==='config'?state.config:state.months[id.slice(2)]}
 function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
+  var dd=docFor(id);if(dd)dd._ts=Date.now();
   persistLocal();
-  if(!col){return}
+  if(!col){paintStatus();return}
   dirty[id]=true; clearTimeout(timers[id]);
   setStatus('saving');
   timers[id]=setTimeout(function(){flush(id)},600);
@@ -400,7 +401,11 @@ function initDb(){
 }
 
 /* ---------- vues ---------- */
-function paintStatus(){var s=STATUS[state.status]||STATUS.loading;var el=$('#status');el.className='chip '+s.cls;el.textContent=s.txt}
+function paintStatus(){var el=$('#status');if(!el)return;
+  if(col){var s=STATUS[state.status]||STATUS.loading;el.className='chip '+s.cls;el.textContent=s.txt;return}
+  var t='Synchroniser',c='';
+  if(sy.busy){t='Synchro…'}else if(sy.err){t='Échec · réessayer';c=' bad'}else if(syncPending()){t='Valider';c=' warn'}else if(sy.ok){t='Synchronisé';c=' ok'}
+  el.className='chip'+c;el.textContent=t;el.disabled=!!sy.busy}
 function bar(v,max,good){var p=max>0?Math.max(0,Math.min(100,v/max*100)):0;var k=good?(max>0&&v>=max-0.005?' ok':''):(v>max&&max>0?' over':'');return '<div class="bar'+k+'"><i style="width:'+p.toFixed(1)+'%"></i></div>'}
 function who(m){return state.config.contributors.concat(['Autre'])}
 
@@ -780,6 +785,42 @@ function bankSync(){
   return s;
 }
 
+var sy={busy:false,err:'',ok:false},SYM='budget-sync-meta';
+function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e){return {}}}
+function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
+function syncPending(){var m=syMeta();return syIds().some(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)})}
+function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
+function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1];
+  ['fixed','credits','extras'].forEach(function(l){var have={};(r[l]||[]).forEach(function(x){have[syKey(x,l)]=1});
+    (o[l]||[]).forEach(function(x){if(!have[syKey(x,l)]){r[l]=r[l]||[];r[l].push(clone(x))}})});
+  r.bankSeen=Object.assign({},o.bankSeen||{},r.bankSeen||{});return r}
+function syAdopt(id,data){if(id==='config')state.config=normCfg(data);else state.months[id.slice(2)]=normMonth(data,id.slice(2))}
+function syFail(){sy.busy=false;sy.err='1';paintStatus()}
+function doSync(silent){
+  if(sy.busy||col)return;
+  if(!bank.token){if(!silent){state.tab='banque';bank.msg='Connecte-toi (onglet Banque) pour synchroniser les deux téléphones.';render()}return}
+  sy.busy=true;sy.err='';paintStatus();
+  bankCall('/sync').then(function(x){
+    if(!x.ok)throw new Error('get');
+    var rem=x.d.docs||{},meta=syMeta(),push={},ids={};
+    syIds().concat(Object.keys(rem)).forEach(function(id){ids[id]=1});
+    Object.keys(ids).forEach(function(id){
+      var l=docFor(id),r=rem[id];
+      if(!r){if(l)push[id]={ts:l._ts||0,data:l};return}
+      var rt=r.ts||0,lt=l?(l._ts||0):-1,m0=meta[id]||0;
+      if(!l){syAdopt(id,r.data);meta[id]=rt;return}
+      if(rt===lt){meta[id]=rt;return}
+      if(lt>m0&&rt>m0){var mg=id==='config'?clone(rt>=lt?r.data:l):syMerge(l,r.data);mg._ts=Math.max(lt,rt)+1;syAdopt(id,mg);push[id]={ts:mg._ts,data:mg};return}
+      if(rt>lt){syAdopt(id,r.data);meta[id]=rt;return}
+      push[id]={ts:lt,data:l};
+    });
+    var done=function(){try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();sy.busy=false;sy.ok=true;render()};
+    if(!Object.keys(push).length){done();return}
+    return bankCall('/sync',{method:'POST',body:JSON.stringify({docs:push})}).then(function(y){
+      if(!y.ok)throw new Error('post');
+      Object.keys(push).forEach(function(id){meta[id]=push[id].ts});done()});
+  }).catch(syFail);
+}
 function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
 function render(){
   $('#month').textContent=ymLabel(ym);
@@ -802,6 +843,7 @@ document.addEventListener('click',function(e){
   if(a==='prev'){ym=shiftYm(ym,-1);render()}
   else if(a==='next'){ym=shiftYm(ym,1);render()}
   else if(a==='goto'){ym=t.dataset.ym;state.tab='synthese';render();window.scrollTo(0,0)}
+  else if(a==='sync'){doSync()}
   else if(a==='tab'){state.tab=t.dataset.tab;render();window.scrollTo(0,0)}
   else if(a==='del'){
     var mk=t.dataset.from||ym,m=editM(mk),l=t.dataset.list;
@@ -894,7 +936,7 @@ function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='2')return;
 loadLocal();applySeed();applyModel();bankFix1();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
-if(bank.token)bankLoad();
+if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500)}
 initDb();
 })();
 </script>
