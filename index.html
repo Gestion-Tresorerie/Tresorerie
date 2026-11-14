@@ -747,7 +747,7 @@ function vFix(m,c,xt){
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
-      '<input type="text" name="months" inputmode="numeric" placeholder="Durée (mois) — vide = sans fin" class="full" aria-label="Durée en mois">'+
+      '<label class="small muted full" style="display:block">Dernier mois de la charge<select name="until" class="full" style="margin-top:4px" aria-label="Dernier mois"><option value="">Sans fin</option>'+Array.apply(null,Array(48)).map(function(_,i){var q=shiftYm(ym,i);return '<option value="'+q+'">'+esc(ymLabel(q))+'</option>'}).join('')+'</select></label>'+
       '<button class="btn primary add" type="submit">Ajouter</button> <button class="btn" type="button" data-fx="addtog">Annuler</button></form></section>':
       '<button class="btn" data-fx="addtog" style="margin:2px 0 10px">+ Charge fixe (plusieurs mois)</button>')+'<p class="small muted" style="margin:4px 2px">Charges ponctuelles : onglet Extra.</p>');
 }
@@ -1251,7 +1251,7 @@ document.addEventListener('submit',function(e){
   if(k==='add-fixed'){editM(ym).fixed.push({id:uid(),label:label,group:fd.get('group'),planned:amount,actual:amount,paid:false});commitM()}
   else if(k==='add-credit'){editM(ym).credits.push({id:uid(),label:label,who:fd.get('who'),planned:amount,actual:amount,done:false});commitM()}
   else if(k==='add-extra'){editM(ym).extras.push({id:uid(),label:label,cat:fd.get('cat'),amount:amount,date:fd.get('date')});commitM()}
-  else if(k==='add-rec'){var nm=Math.floor(num(fd.get('months')));nm=nm>0?nm:null;
+  else if(k==='add-rec'){var un=String(fd.get('until')||''),nm=null;if(/^\d{4}-\d{2}$/.test(un)){var pa=ym.split('-'),pb=un.split('-');nm=(+pb[0]-+pa[0])*12+(+pb[1]-+pa[1])+1;if(nm<1)nm=null}
     var tp={id:uid(),label:label,group:fd.get('group'),amount:amount,from:ym,months:nm};state.config.fixed.push(tp);
     var ks={};ks[ym]=1;Object.keys(state.months).forEach(function(q){if(tplOn(tp,q))ks[q]=1});
     Object.keys(ks).forEach(function(q){if(!tplOn(tp,q))return;var mq=editM(q);if(!mq.fixed.some(function(y){return y.tid===tp.id}))mq.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false});touch('m-'+q)});
