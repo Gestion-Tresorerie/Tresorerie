@@ -210,7 +210,8 @@ input.num{font-size:16px;padding:11px 10px}
 .syn .hero .big{font-size:42px;font-weight:600;text-shadow:0 0 26px color-mix(in srgb,var(--glow) calc(var(--gk)*45%),transparent)}
 .spark{margin-top:8px;overflow:visible}
 .sparkn{display:flex;justify-content:space-between;font-size:12px;margin-top:4px}
-.rings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rtile .rwrap,.rtile .ring{width:84px;height:84px}.rtile .rv{font-size:11.5px;letter-spacing:-.2px}.rtile .rs{font:500 11px var(--mono);color:var(--muted);margin-top:2px;opacity:.85}.rtile .rl{font-size:12px;margin-top:8px}
 .rtile{padding:14px 4px 12px;text-align:center;cursor:pointer}
 .rwrap{position:relative;width:72px;height:72px;margin:0 auto}
 .rv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 14px var(--mono)}
@@ -308,7 +309,8 @@ var inp=function(v){return String(Math.round((v||0)*100)/100).replace('.',',')};
 var uid=function(){return Math.random().toString(36).slice(2,9)};
 var MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 var GROUPS=['Logement','Crédits & leasing','Assurances','Énergie & télécom','Enfants & école','Famille','Divers'];
-var CATS=['Courses','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
+var RESTO='Ticket resto';
+var CATS=['Courses','Ticket resto','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
 var STATUS={
   loading:{cls:'',txt:'Chargement…'}, saved:{cls:'ok',txt:'Enregistré'}, saving:{cls:'',txt:'Enregistrement…'},
   local:{cls:'warn',txt:'Local à cet appareil'}, stale:{cls:'warn',txt:'Données peut-être anciennes'},
@@ -410,7 +412,9 @@ function calc(m){
   r.fixedProj=r.fixedPaid+r.fixedRemain;
   r.coursesPlanned=m.courses.planned||0;
   r.coursesSpent=sum(m.extras.filter(function(e){return e.cat==='Courses'}),function(e){return e.amount});
-  r.otherExtras=sum(m.extras.filter(function(e){return e.cat!=='Courses'}),function(e){return e.amount});
+  r.restoPlanned=restoOf(m);
+  r.restoSpent=sum(m.extras.filter(function(e){return e.cat===RESTO}),function(e){return e.amount});
+  r.otherExtras=sum(m.extras.filter(function(e){return e.cat!=='Courses'&&e.cat!==RESTO}),function(e){return e.amount});
   r.extrasTotal=r.coursesSpent+r.otherExtras;
   r.coursesProj=Math.max(r.coursesPlanned,r.coursesSpent);
   r.marginPlanned=r.creditsPlanned-r.fixedPlanned-r.coursesPlanned;
@@ -527,7 +531,7 @@ function vTodo(m,c){
 var synLast=0;
 function stCol(k){return k==='g'?'var(--good)':(k==='o'?'var(--warn)':'var(--bad)')}
 function ringSvg(p,k){var R=29,L=2*Math.PI*R,pp=Math.max(0,Math.min(100,p));return '<svg class="ring" viewBox="0 0 70 70" width="72" height="72" aria-hidden="true"><circle class="rt" cx="35" cy="35" r="29" fill="none" stroke-width="7"/><circle class="rp" cx="35" cy="35" r="29" fill="none" style="stroke:'+stCol(k)+';color:'+stCol(k)+';--L:'+L.toFixed(1)+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+L.toFixed(1)+'" stroke-dashoffset="'+(L*(1-pp/100)).toFixed(1)+'" transform="rotate(-90 35 35)"/></svg>'}
-function ringTile(label,p,k,tab){return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+Math.round(p)+'%</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div></div>'}
+function ringTile(label,p,k,tab,val,tot){var nf=function(v){return num(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})};return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf(val)+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div><div class="rs">sur '+fmt(tot)+'</div></div>'}
 function balNow(){
   var b=!col&&bank.bal;if(!b)return null;
   var T=String(b.type||'').toUpperCase(),avail=/^(ITAV|CLAV|XPCD)$/.test(T);
@@ -565,7 +569,8 @@ function vSynth(m,c){
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
   var cp=c.coursesPlanned>0?c.coursesSpent/c.coursesPlanned*100:0,ck=cp>100?'r':(cp>=80?'o':'g');
   var fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unpaid?'o':'g';
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses')+ringTile('Charges',fp,fk,'fixes')+'</div>';
+  var rp=c.restoPlanned>0?c.restoSpent/c.restoPlanned*100:(c.restoSpent>0?101:0),rk=rp>100?'r':(rp>=80?'o':'g');
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesSpent,c.coursesPlanned)+ringTile('Resto',rp,rk,'depenses',c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.fixedPaid,c.fixedPlanned)+'</div>';
   return ''+
   (function(){var b=balNow(),dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
     return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en attente ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">comptable '+fmt(b.booked)+'</span></div>':(b.avail?'<div class="small muted" style="margin-top:4px">Solde disponible : inclut les opérations en attente</div>':'')):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
@@ -736,8 +741,10 @@ function vDep(m,c){
   return '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
     '<div class="line" style="border:0"><span class="small muted">Dépensé / enveloppe du mois</span>'+
     '<span class="n small">'+fmt(c.coursesSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-courses="1" value="'+inp(c.coursesPlanned)+'" aria-label="Enveloppe courses"></span></div>'+
-    '<div class="line"><span class="small muted">Tickets resto <span class="muted">(en plus, hors PAF)</span></span>'+
-    '<span class="n small"><input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Tickets resto"></span></div></section>'+
+    '</section><section class="card"><h2>Enveloppe tickets resto</h2>'+bar(c.restoSpent,c.restoPlanned)+
+    '<div class="line" style="border:0"><span class="small muted">Dépensé / budget du mois <span class="muted">(hors PAF, hors compte)</span></span>'+
+    '<span class="n small">'+fmt(c.restoSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Budget tickets resto"></span></div>'+
+    '<div class="small '+(c.restoSpent>c.restoPlanned?'neg':'muted')+'">'+(c.restoSpent>c.restoPlanned?'Dépassement de '+fmt(c.restoSpent-c.restoPlanned):'Reste '+fmt(c.restoPlanned-c.restoSpent))+' · catégorie « Ticket resto » dans le formulaire ci-dessous</div></section>'+
     vLink(m)+vPick(m)+
     '<section class="card"><h2>Ajouter une dépense</h2><form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
@@ -745,7 +752,7 @@ function vDep(m,c){
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
       '<button class="btn primary full" type="submit">Ajouter</button></form></section>'+
-    '<section class="card"><h2>Dépenses du mois · '+fmt(c.extrasTotal)+'</h2>'+(list||'<div class="empty">Aucune dépense hors charges.</div>')+'</section>';
+    '<section class="card"><h2>Dépenses du mois · '+fmt(c.extrasTotal)+(c.restoSpent?' <span class="muted" style="font-weight:400">+ '+fmt(c.restoSpent)+' resto</span>':'')+'</h2>'+(list||'<div class="empty">Aucune dépense hors charges.</div>')+'</section>';
 }
 
 function vModel(){
