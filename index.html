@@ -229,6 +229,13 @@ input.num{font-size:16px;padding:11px 10px}
 .syn.an .rp{animation:rg 1.3s cubic-bezier(.2,.8,.2,1) .2s both}
 }
 
+/* En-tête compact : logo | mois | statut, répartis également */
+.head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.head .brand,.head #status{flex:none}
+.head .monthnav{gap:0}
+.head .monthnav .ib{width:36px;height:40px}
+.head .monthnav h1{min-width:0;padding:0 4px;white-space:nowrap;font-size:16px}
+.head #status{max-width:none;font-size:12px;padding:6px 10px;line-height:1.2}
 </style>
 </head>
 <body>
