@@ -1194,7 +1194,7 @@ function vNous(m,c){
     '<label class="small muted" style="display:block">Avancé par'+sel('by',['h','l'],'h')+'</label>'+
     '<label class="small muted" style="display:block">À rembourser par'+sel('owe',['l','h','b'],'l')+'</label>'+
     '<button class="btn primary add" type="submit">Ajouter</button></form></section>';
-  var pots=state.config.fixed.filter(function(t){return t.group==='Famille'}).map(function(t){
+  var pots=state.config.fixed.filter(function(t){return t.group==='Famille'&&!/karama|delphin/i.test(t.label)}).map(function(t){
     var paid={},adj=(N.pots[t.id]||[]).slice(),adjm={};
     Object.keys(state.months).forEach(function(k){(state.months[k].fixed||[]).forEach(function(x){if(x.tid===t.id&&x.paid)paid[k]=(paid[k]||0)+num(x.actual)})});
     adj.forEach(function(e){var k=String(e.date||'').slice(0,7);adjm[k]=(adjm[k]||0)+num(e.amount)});
@@ -1210,7 +1210,7 @@ function vNous(m,c){
       '<input type="text" name="label" placeholder="Libellé (ex. courses école)" required class="full" aria-label="Libellé">'+
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
       '<button class="btn primary add" type="submit">Enregistrer</button></form>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
-  return head+list+form+(pots||'<section class="card"><h2>Cagnottes famille</h2><div class="empty">Aucune charge fixe dans le groupe « Famille ».</div></section>');
+  return head+list+form+(pots||'<section class="card"><h2>Cagnottes famille</h2><div class="empty">Aucune charge fixe suivie dans le groupe « Famille ».</div></section>');
 }
 var anLast={};
 function render(){
