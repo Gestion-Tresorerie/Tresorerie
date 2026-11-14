@@ -236,7 +236,7 @@ function shares(m){
   var i0=num(cfg.incomes[0]),i1=num(cfg.incomes[1]),tot=i0+i1,known=tot>0;
   var p0=known?i0/tot:0.5;
   var s0=Math.round(base*p0*100)/100,s1=Math.round((base-s0)*100)/100;
-  var first=Math.min(num(cfg.salaryFirst)||s0,s0);
+  var sf=num(cfg.salaryFirst),first=(i0>0&&sf>0)?Math.round(s0*Math.min(sf,i0)/i0*100)/100:s0;
   var l1=null;m.credits.forEach(function(x){if(x.kind==='paf1')l1=x});
   var firstUsed=(l1&&l1.done&&l1.actual!=null)?l1.actual:first;
   var second=Math.max(0,Math.round((s0-firstUsed)*100)/100);
