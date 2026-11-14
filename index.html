@@ -296,7 +296,7 @@ input.num{font-size:16px;padding:11px 10px}
   <button data-act="tab" data-tab="fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Charges</button>
   <button data-act="tab" data-tab="extra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Extra</button>
   <button data-act="tab" data-tab="depenses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Dépenses</button>
-  <button data-act="tab" data-tab="banque"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>Banque</button>
+  <button data-act="tab" data-tab="nous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4"/></svg>Entre nous</button>
   <button data-act="tab" data-tab="plus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>Plus</button>
 </nav></div>
 
@@ -334,13 +334,20 @@ var timers={},busy={},dirty={};
 function ymLabel(s){var p=s.split('-');return MOIS[+p[1]-1]+' '+p[0]}
 function shiftYm(s,k){var p=s.split('-');var d=new Date(+p[0],+p[1]-1+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function clone(o){return JSON.parse(JSON.stringify(o))}
+function normNous(n){n=n||{};return {ledger:Array.isArray(n.ledger)?n.ledger:[],pots:(n.pots&&typeof n.pots==='object'&&!Array.isArray(n.pots))?n.pots:{},del:Array.isArray(n.del)?n.del:[]}}
+function nsd(){if(!state.config.nous)state.config.nous=normNous();return state.config.nous}
+function cfgMerge(l,r,rNewer){var w=clone(rNewer?r:l),o=rNewer?l:r,a=normNous(w.nous),b=normNous(o.nous),dead={};
+  a.del.concat(b.del).forEach(function(k){dead[k]=1});
+  function un(x,y){var out=(x||[]).filter(function(e){return !dead[e.id]}),h={};out.forEach(function(e){h[e.id]=1});(y||[]).forEach(function(e){if(!h[e.id]&&!dead[e.id])out.push(e)});return out}
+  a.ledger=un(a.ledger,b.ledger);Object.keys(b.pots).forEach(function(k){a.pots[k]=un(a.pots[k],b.pots[k])});Object.keys(a.pots).forEach(function(k){a.pots[k]=un(a.pots[k],[])});
+  a.del=Object.keys(dead).slice(-500);w.nous=a;return w}
 function normCfg(d){
   var c=clone(d||{});
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
     courses:typeof c.courses==='number'?c.courses:500, resto:typeof c.resto==='number'?c.resto:60,
     fixed:Array.isArray(c.fixed)?c.fixed:[], credits:Array.isArray(c.credits)?c.credits:[],
     incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3245.5,1550],
-    firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500,_ts:typeof c._ts==='number'?c._ts:0};
+    firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500,_ts:typeof c._ts==='number'?c._ts:0,nous:normNous(c.nous)};
 }
 function normMonth(d,key){
   var m=clone(d||{});
@@ -1141,7 +1148,7 @@ function doSync(silent){
       var rt=r.ts||0,lt=l?(l._ts||0):-1,m0=meta[id]||0;
       if(!l){syAdopt(id,r.data);meta[id]=rt;return}
       if(rt===lt){meta[id]=rt;return}
-      if(lt>m0&&rt>m0){var mg=id==='config'?clone(rt>=lt?r.data:l):syMerge(l,r.data);mg._ts=Math.max(lt,rt)+1;syAdopt(id,mg);push[id]={ts:mg._ts,data:mg};return}
+      if(lt>m0&&rt>m0){var mg=id==='config'?cfgMerge(l,r.data,rt>=lt):syMerge(l,r.data);mg._ts=Math.max(lt,rt)+1;syAdopt(id,mg);push[id]={ts:mg._ts,data:mg};return}
       if(rt>lt){syAdopt(id,r.data);meta[id]=rt;return}
       push[id]={ts:lt,data:l};
     });
@@ -1152,18 +1159,64 @@ function doSync(silent){
       Object.keys(push).forEach(function(id){meta[id]=push[id].ts});done()});
   }).catch(syFail);
 }
-function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
+function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages'],['banque','Banque','Connexion Fortuneo, synchro, opérations']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
+var nsErr='',NSN={h:'Hasina',l:'Linda',b:'Budget des deux'};
+function nsName(k){var cn=state.config.contributors;return k==='h'?(cn[0]||'Hasina'):(k==='l'?(cn[1]||'Linda'):'Budget des deux')}
+function nsDate(d){d=String(d||'');return d.length>=10?d.slice(8,10)+'/'+d.slice(5,7):d}
+function vNous(m,c){
+  var N=nsd(),open=N.ledger.filter(function(x){return !x.done});
+  var sm=function(f){return Math.round(sum(open.filter(f),function(x){return num(x.amount)})*100)/100};
+  var hl=sm(function(x){return x.by==='h'&&x.owe==='l'}),lh=sm(function(x){return x.by==='l'&&x.owe==='h'}),net=Math.round((hl-lh)*100)/100;
+  var bh=sm(function(x){return x.owe==='b'&&x.by==='h'}),bl=sm(function(x){return x.owe==='b'&&x.by==='l'});
+  var H=nsName('h'),L=nsName('l');
+  var head='<section class="card"><h2>Avances entre vous</h2><div class="big '+(net===0?'':(net>0?'pos':'neg'))+'" style="font-size:30px">'+(net===0?'Quitte':fmt(Math.abs(net)))+'</div>'+
+    '<div class="small muted" style="margin-top:6px">'+(net>0?esc(L)+' doit à '+esc(H):(net<0?esc(H)+' doit à '+esc(L):'Aucune avance entre '+esc(H)+' et '+esc(L)))+'</div>'+
+    ((bh||bl)?'<div class="tags" style="margin-top:8px">'+(bh?'<span class="tag tw">Budget des deux doit '+fmt(bh)+' à '+esc(H)+'</span>':'')+(bl?'<span class="tag tw">Budget des deux doit '+fmt(bl)+' à '+esc(L)+'</span>':'')+'</div>':'')+'</section>';
+  var show=N.ledger.filter(function(x){var mo=String(x.date||'').slice(0,7);return mo===ym||(x.done&&x.doneIn===ym)||(!x.done&&mo<ym)}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
+  var rows=show.map(function(x){var mo=String(x.date||'').slice(0,7),car=(!x.done&&mo<ym)||(x.done&&x.doneIn&&x.doneIn!==mo&&mo!==ym);
+    return '<div class="row'+(x.done?' is-done':'')+'"><label class="chk"><input type="checkbox" data-ns="done" data-id="'+x.id+'"'+(x.done?' checked':'')+' aria-label="Réglé"><span></span></label>'+
+      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag">avancé par '+esc(nsName(x.by))+'</span><span class="tag '+(x.owe==='b'?'tw':'tb')+'">'+esc(nsName(x.owe))+' rembourse</span>'+(car?'<span class="tag tb">reportée de '+esc(ymLabel(mo))+'</span>':'')+'</div></div>'+
+      '<input class="num" inputmode="decimal" data-ns="amt" data-id="'+x.id+'" value="'+inp(x.amount)+'" aria-label="Montant">'+
+      '<button class="x" data-ns="del" data-id="'+x.id+'" aria-label="Supprimer">×</button></div>'}).join('');
+  var today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
+  var sel=function(nm,opts,v){return '<select name="'+nm+'" aria-label="'+nm+'">'+opts.map(function(k){return '<option value="'+k+'"'+(k===v?' selected':'')+'>'+esc(nsName(k))+'</option>'}).join('')+'</select>'};
+  var list='<section class="card"><h2>Frais à rembourser · '+esc(ymLabel(ym))+'</h2><p class="small muted" style="margin:0 0 6px">Coche = réglé. Une ligne non cochée est reportée automatiquement sur le mois suivant.</p>'+(rows||'<div class="empty">Rien à régler ce mois-ci.</div>')+'</section>';
+  var form='<section class="card"><h2>Ajouter une avance</h2>'+(nsErr?'<div class="note bad">'+esc(nsErr)+'</div>':'')+'<form class="form" data-form="ns-add">'+
+    '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required class="full" aria-label="Libellé">'+
+    '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
+    '<input type="date" name="date" value="'+def+'" aria-label="Date">'+
+    '<label class="small muted" style="display:block">Avancé par'+sel('by',['h','l'],'h')+'</label>'+
+    '<label class="small muted" style="display:block">À rembourser par'+sel('owe',['l','h','b'],'l')+'</label>'+
+    '<button class="btn primary add" type="submit">Ajouter</button></form></section>';
+  var pots=state.config.fixed.filter(function(t){return t.group==='Famille'}).map(function(t){
+    var paid={},adj=(N.pots[t.id]||[]).slice(),adjm={};
+    Object.keys(state.months).forEach(function(k){(state.months[k].fixed||[]).forEach(function(x){if(x.tid===t.id&&x.paid)paid[k]=(paid[k]||0)+num(x.actual)})});
+    adj.forEach(function(e){var k=String(e.date||'').slice(0,7);adjm[k]=(adjm[k]||0)+num(e.amount)});
+    var ks={};Object.keys(paid).concat(Object.keys(adjm)).forEach(function(k){ks[k]=1});var K=Object.keys(ks).sort(),run=0,tbl=[];
+    K.forEach(function(k){var v=paid[k]||0,w=adjm[k]||0;run=Math.round((run+v+w)*100)/100;tbl.push({k:k,v:v,w:w,s:run})});
+    var tr=tbl.slice(-6).reverse().map(function(r){return '<div class="line"><span class="small">'+esc(ymLabel(r.k))+'</span><span class="n small"><span class="pos">'+(r.v?'+'+fmt(r.v):'—')+'</span> · <span class="'+(r.w<0?'neg':'')+'">'+(r.w?sgn(r.w):'—')+'</span> · <b>'+fmt(r.s)+'</b></span></div>'}).join('');
+    var ents=adj.sort(function(a,b){return String(b.date).localeCompare(String(a.date))}).slice(0,8).map(function(e){
+      return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span></span></span><span class="n '+(e.amount<0?'neg':'pos')+'">'+sgn(e.amount)+' <button class="x" data-ns="pdel" data-pid="'+esc(t.id)+'" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
+    return '<section class="card"><h2>Cagnotte · '+esc(t.label)+'</h2><div class="big '+(run<0?'neg':'')+'" style="font-size:28px">'+fmt(run)+'</div><div class="small muted" style="margin:4px 0 8px">Versements cochés payés − retraits · Mois : versé · retrait · solde</div>'+(tr||'<div class="empty">Aucun versement pour l’instant.</div>')+
+      '<div class="grp" style="margin-top:14px"><b>Retirer / ajouter</b></div><form class="form" data-form="ns-pot"><input type="hidden" name="pid" value="'+esc(t.id)+'">'+
+      '<select name="kind" aria-label="Type"><option value="out">Retrait (utilisé)</option><option value="in">Ajout (correction)</option></select>'+
+      '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
+      '<input type="text" name="label" placeholder="Libellé (ex. courses école)" required class="full" aria-label="Libellé">'+
+      '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
+      '<button class="btn primary add" type="submit">Enregistrer</button></form>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
+  return head+list+form+(pots||'<section class="card"><h2>Cagnottes famille</h2><div class="empty">Aucune charge fixe dans le groupe « Famille ».</div></section>');
+}
 var anLast={};
 function render(){
   $('#month').textContent=ymLabel(ym);
   paintStatus();
-  document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele'].indexOf(state.tab)>=0))?'page':'false')});
+  document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele','banque'].indexOf(state.tab)>=0))?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,nous:vNous,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
   var keepFocus=null;
   var nowT=Date.now(),an=nowT-(anLast[state.tab]||0)>5000;anLast[state.tab]=nowT;
   $('#view').innerHTML='<div class="syn'+(an?' an':'')+'" style="display:contents">'+f(m,c)+'</div>';
-  var vw=$('#view'),ro=ym<CUR&&['revenus','fixes','extra','depenses'].indexOf(state.tab)>=0;
+  var vw=$('#view'),ro=ym<CUR&&['revenus','fixes','extra','depenses','nous'].indexOf(state.tab)>=0;
   vw.classList.toggle('ro',ro);
   if(ro){var sy2=vw.firstChild;sy2.insertAdjacentHTML('afterbegin','<div class="note">🔒 Mois clos : lecture seule.</div>');
     vw.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=true})}
@@ -1221,6 +1274,10 @@ document.addEventListener('click',function(e){
 
 document.addEventListener('change',function(e){
   var el=e.target;
+  if(el.dataset&&(el.dataset.ns==='done'||el.dataset.ns==='amt')){
+    var nx=findBy(nsd().ledger,el.dataset.id);if(!nx)return;
+    if(el.dataset.ns==='amt'){nx.amount=num(el.value)}else{nx.done=el.checked;if(el.checked)nx.doneIn=ym;else delete nx.doneIn}
+    commitCfg();return}
   if(el.dataset.list){
     var mk=el.dataset.from||ym,m=editM(mk),it=findBy(m[el.dataset.list],el.dataset.id); if(!it)return;
     var f=el.dataset.f;
@@ -1252,6 +1309,11 @@ document.addEventListener('change',function(e){
   else if(el.dataset.courses){var m4=editM(ym);m4.courses.planned=num(el.value);commitM()}
 });
 
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button[data-ns]');if(!t)return;var N=nsd(),id=t.dataset.id;
+  if(t.dataset.ns==='del'){N.ledger=N.ledger.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
+  else if(t.dataset.ns==='pdel'){var pl=N.pots[t.dataset.pid]||[];N.pots[t.dataset.pid]=pl.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
+});
 document.addEventListener('submit',function(e){
   var form=e.target.closest('[data-form]'); if(!form)return;
   e.preventDefault();
@@ -1261,6 +1323,11 @@ document.addEventListener('submit',function(e){
   if(k==='add-fixed'){editM(ym).fixed.push({id:uid(),label:label,group:fd.get('group'),planned:amount,actual:amount,paid:false});commitM()}
   else if(k==='add-credit'){editM(ym).credits.push({id:uid(),label:label,who:fd.get('who'),planned:amount,actual:amount,done:false});commitM()}
   else if(k==='add-extra'){editM(ym).extras.push({id:uid(),label:label,cat:fd.get('cat'),amount:amount,date:fd.get('date')});commitM()}
+  else if(k==='ns-add'){var by=fd.get('by'),ow=fd.get('owe');
+    if(ow!=='b'&&ow===by){nsErr='Celui qui avance ne peut pas être celui qui rembourse.';render();return}
+    nsErr='';nsd().ledger.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:amount,by:by,owe:ow,done:false});commitCfg()}
+  else if(k==='ns-pot'){var pid=String(fd.get('pid')||''),pl=nsd().pots[pid]||(nsd().pots[pid]=[]);
+    pl.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:(fd.get('kind')==='in'?1:-1)*Math.abs(amount)});commitCfg()}
   else if(k==='add-rec'){var un=String(fd.get('until')||''),nm=null;if(/^\d{4}-\d{2}$/.test(un)){var pa=ym.split('-'),pb=un.split('-');nm=(+pb[0]-+pa[0])*12+(+pb[1]-+pa[1])+1;if(nm<1)nm=null}
     var tp={id:uid(),label:label,group:fd.get('group'),amount:amount,from:ym,months:nm};state.config.fixed.push(tp);
     var ks={};ks[ym]=1;Object.keys(state.months).forEach(function(q){if(tplOn(tp,q))ks[q]=1});
