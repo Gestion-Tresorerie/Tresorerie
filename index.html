@@ -431,8 +431,8 @@ function vShare(m,c,full){
     var left=S.income[i]-S.share[i];
     var rest=full?(S.income[i]>0?'<div class="line" style="border:0;padding:8px 0 0"><span>Budget restant <span class="small muted">(revenu net '+fmt(S.income[i])+' − part)</span></span><span class="n '+(left>=0?'pos':'neg')+'"><b>'+fmt(left)+'</b></span></div>':'<div class="note warn">Revenu net non renseigné : budget restant indisponible.</div>'):'';
     var over=S.over[i]?'<div class="note bad">Part supérieure au revenu net ('+fmt(S.income[i])+').</div>':'';
-    return '<div class="share"><div class="line" style="border:0;padding-bottom:2px"><span><b>'+esc(name)+'</b> <span class="pill">'+pct(S.p[i])+'</span></span><span class="n"><b>'+fmt(S.share[i])+'</b></span></div>'+
-      bar(got,S.share[i],true)+'<div class="vers"><span>Versé <b>'+fmt(got)+'</b></span><span class="'+(got<S.share[i]?'neg':'pos')+'">'+(got<S.share[i]?'reste '+fmt(S.share[i]-got):'complet')+'</span></div>'+detail+over+rest+'</div>';
+    return '<div class="share"><div class="line" style="border:0;padding-bottom:2px"><span><b>'+esc(name)+'</b> <span class="pill">'+(S.income[i]>0?pct(S.share[i]/S.income[i])+' du net':pct(S.p[i]))+'</span></span><span class="n"><b>'+fmt(S.share[i])+'</b></span></div>'+
+      bar(got,S.share[i],true)+'<div class="vers"><span>Versé <b>'+fmt(got)+'</b></span><span class="'+(got<S.share[i]-0.005?'neg':'pos')+'">'+(got<S.share[i]-0.005?'reste '+fmt(S.share[i]-got):(got>S.share[i]+0.005?'complet · +'+fmt(got-S.share[i])+' en trop':'complet'))+'</span></div>'+detail+over+rest+'</div>';
   }).join('');
   return '<section class="card tap" role="button" data-act="tab" data-tab="revenus"><h2>Répartition des charges</h2>'+warn+
     '<div class="line" style="border:0;padding-top:0"><span class="muted small">Charges + courses à financer</span><span class="n"><b>'+fmt(S.base)+'</b></span></div>'+rows+'</section>';
@@ -464,14 +464,11 @@ function vSynth(m,c){
   (function(){var b=!col&&bank.bal,dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
     return '<section class="card hero"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
   vTodo(m,c)+
-  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Courses · enveloppe du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div>'+bar(c.coursesSpent,c.coursesPlanned)+'<div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div></section>'+
-  '<div class="grid2" style="grid-template-columns:1fr">'+
-    '<div class="kpi tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Autres dépenses</div><div class="v">'+fmt(c.otherExtras)+'</div><div class="s">hors courses</div></div>'+
-  '</div>'+
+  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div>'+bar(c.coursesSpent,c.coursesPlanned)+'<div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
+    '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
-  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
-    '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div></section>'+
-  (gaps?'<section class="card"><h2>Écarts sur charges</h2>'+gaps+'</section>':'');
+  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
+    '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>';
 }
 
 function vRev(m,c){
