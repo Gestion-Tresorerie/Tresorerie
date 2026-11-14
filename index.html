@@ -291,6 +291,7 @@ input.num{font-size:16px;padding:11px 10px}
 <div class="tabbar"><nav aria-label="Sections">
   <button data-act="tab" data-tab="synthese"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z"/></svg>Synthèse</button>
   <button data-act="tab" data-tab="fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Charges</button>
+  <button data-act="tab" data-tab="extra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Extra</button>
   <button data-act="tab" data-tab="depenses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Dépenses</button>
   <button data-act="tab" data-tab="banque"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>Banque</button>
   <button data-act="tab" data-tab="plus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>Plus</button>
@@ -379,6 +380,7 @@ function getV(key){
 function resetVirt(){Object.keys(virt).forEach(function(k){delete virt[k]})}
 
 /* ---------- calculs ---------- */
+function isX(x){return !x.tid||x.xtra===true}
 function sum(a,f){return a.reduce(function(s,x){return s+f(x)},0)}
 function shares(m){
   var cfg=state.config;
@@ -410,6 +412,9 @@ function calc(m){
   r.fixedPaid=sum(m.fixed,function(x){return x.paid?x.actual:0});
   r.fixedRemain=sum(m.fixed,function(x){return x.paid?0:x.planned});
   r.fixedProj=r.fixedPaid+r.fixedRemain;
+  var FK=m.fixed.filter(function(x){return !isX(x)}),FX=m.fixed.filter(isX);
+  r.kPlanned=sum(FK,function(x){return x.planned});r.kPaid=sum(FK,function(x){return x.paid?x.actual:0});r.kRemain=sum(FK,function(x){return x.paid?0:x.planned});
+  r.xPlanned=sum(FX,function(x){return x.planned});r.xPaid=sum(FX,function(x){return x.paid?x.actual:0});r.xRemain=sum(FX,function(x){return x.paid?0:x.planned});
   r.coursesPlanned=m.courses.planned||0;
   r.coursesSpent=sum(m.extras.filter(function(e){return e.cat==='Courses'}),function(e){return e.amount});
   r.restoPlanned=restoOf(m);
@@ -519,8 +524,10 @@ function vTodo(m,c){
     var got=sum(m.credits.filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who===name&&x.done}),function(x){return act(x,S)});
     var left=Math.round((S.share[i]-got)*100)/100;
     if(left>0.5)it.push({tab:'revenus',t:name+' : reste à verser',v:fmt(left),cls:'neg',d:'Part '+fmt(S.share[i])+' · déjà versé '+fmt(got)})});
-  var un=m.fixed.filter(function(x){return !x.paid}).sort(function(a,b){return b.planned-a.planned});
-  if(un.length)it.push({tab:'fixes',t:un.length+' charge'+(un.length>1?'s':'')+' à payer',v:fmt(c.fixedRemain),d:un.slice(0,3).map(function(x){return x.label.replace(/\s*\(.*\)$/,'')}).join(', ')+(un.length>3?'…':'')});
+  var un=m.fixed.filter(function(x){return !x.paid&&!isX(x)}).sort(function(a,b){return b.planned-a.planned});
+  var unx=m.fixed.filter(function(x){return !x.paid&&isX(x)}).sort(function(a,b){return b.planned-a.planned});
+  if(unx.length)it.push({tab:'extra',t:unx.length+' extra'+(unx.length>1?'s':'')+' à payer',v:fmt(c.xRemain),d:unx.slice(0,3).map(function(x){return x.label.replace(/\s*\(.*\)$/,'')}).join(', ')+(unx.length>3?'…':'')});
+  if(un.length)it.push({tab:'fixes',t:un.length+' charge'+(un.length>1?'s':'')+' à payer',v:fmt(c.kRemain),d:un.slice(0,3).map(function(x){return x.label.replace(/\s*\(.*\)$/,'')}).join(', ')+(un.length>3?'…':'')});
   var st=!col&&bank.st;
   if(st&&st.linked){var vu=st.valid_until?new Date(st.valid_until):null,dd=vu?Math.ceil((vu-new Date())/864e5):null;
     if(st.expired||(dd!=null&&dd<=10))it.push({tab:'banque',t:'Renouveler le consentement Fortuneo',v:st.expired?'expiré':dd+' j',cls:'neg'})}
@@ -562,15 +569,16 @@ function balSpark(){
 function vSynth(m,c){
   var cls=c.proj>=0?'pos':'neg';
   var paf=vShare(m,c);
-  var gaps=m.fixed.filter(function(x){return x.paid&&Math.abs(x.actual-x.planned)>=0.5})
+  var gaps=m.fixed.filter(function(x){return !isX(x)&&x.paid&&Math.abs(x.actual-x.planned)>=0.5})
     .sort(function(a,b){return Math.abs(b.actual-b.planned)-Math.abs(a.actual-a.planned)}).slice(0,5)
     .map(function(x){var g=x.actual-x.planned;return '<div class="line"><span>'+esc(x.label)+'</span><span class="n '+(g>0?'neg':'pos')+'">'+sgn(g)+'</span></div>'}).join('');
   var unpaid=m.fixed.filter(function(x){return !x.paid}).length;
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
   var cp=c.coursesPlanned>0?c.coursesSpent/c.coursesPlanned*100:0,ck=cp>100?'r':(cp>=80?'o':'g');
-  var fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unpaid?'o':'g';
+  var unpK=m.fixed.filter(function(x){return !isX(x)&&!x.paid}).length,unpX=m.fixed.filter(function(x){return isX(x)&&!x.paid}).length,nK=m.fixed.filter(function(x){return !isX(x)}).length,nX=m.fixed.length-nK;
+  var fp=c.kPlanned>0?c.kPaid/c.kPlanned*100:0,fk=unpK?'o':'g';
   var rp=c.restoPlanned>0?c.restoSpent/c.restoPlanned*100:(c.restoSpent>0?101:0),rk=rp>100?'r':(rp>=80?'o':'g');
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesSpent,c.coursesPlanned)+ringTile('Resto',rp,rk,'depenses',c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.fixedPaid,c.fixedPlanned)+'</div>';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesSpent,c.coursesPlanned)+ringTile('Resto',rp,rk,'depenses',c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.kPaid,c.kPlanned)+'</div>';
   return ''+
   (function(){var b=balNow(),dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
     return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en attente ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">comptable '+fmt(b.booked)+'</span></div>':(b.avail?'<div class="small muted" style="margin-top:4px">Solde disponible : inclut les opérations en attente</div>':'')):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
@@ -580,7 +588,8 @@ function vSynth(m,c){
     '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
   '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges</h2>'+
-    '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>';
+    '<div class="line" style="border:0"><span class="small muted">'+(nK-unpK)+' / '+nK+' lignes</span><span class="n small">'+fmt(c.kPaid)+' / '+fmt(c.kPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>'+
+  (nX?'<section class="card tap" role="button" data-act="tab" data-tab="extra"><h2>Extra</h2><div class="line" style="border:0"><span class="small muted">'+(nX-unpX)+' / '+nX+' lignes</span><span class="n small">'+fmt(c.xPaid)+' / '+fmt(c.xPlanned)+'</span></div></section>':'');
 }
 
 function vRev(m,c){
@@ -699,10 +708,11 @@ function fxSheet(x,m){
       return '<div class="todo tap" role="button" data-fx="link" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+(ex?' ✓':'')+'</b><small class="muted">'+esc(t.date||'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération disponible ce mois-ci.</div>')+
     '<button class="btn" style="margin-top:8px" data-fx="close">Fermer</button></div>'}
 var fixLast=0;
-function vFix(m,c){
-  var groups=GROUPS.slice(); m.fixed.forEach(function(x){if(groups.indexOf(x.group)<0)groups.push(x.group)});
+function vFix(m,c,xt){
+  var groups=xt?['Extra']:GROUPS.slice(); if(!xt)m.fixed.forEach(function(x){if(!isX(x)&&groups.indexOf(x.group)<0)groups.push(x.group)});
+  var P0=xt?c.xPlanned:c.kPlanned,P1=xt?c.xPaid:c.kPaid,P2=xt?c.xRemain:c.kRemain,pool=m.fixed.filter(function(x){return xt?isX(x):!isX(x)});
   var html=groups.map(function(g){
-    var items=m.fixed.filter(function(x){return x.group===g}); if(!items.length)return '';
+    var items=pool.filter(function(x){return xt||x.group===g}); if(!items.length)return '';
     var tp=sum(items,function(x){return x.planned});
     return '<section class="card"><div class="grp"><b>'+esc(g)+' <span class="gc">'+items.filter(function(x){return x.paid}).length+'/'+items.length+'</span></b><span class="n">'+fmt(tp)+'</span></div>'+
       items.map(function(x){
@@ -716,17 +726,17 @@ function vFix(m,c){
       }).join('')+'</section>';
   }).join('');
   var gopts=GROUPS.map(function(g){return '<option>'+esc(g)+'</option>'}).join('');
-  var nCar=Object.keys(m.carry||{}).length;
-  var carNote=nCar?'<div class="note warn">'+nCar+' charge'+(nCar>1?'s reportées':' reportée')+' de mois précédents : elles restent ici tant qu’elles ne sont pas cochées.</div>':(m.carriedOut?'<div class="note">'+m.carriedOut+' charge'+(m.carriedOut>1?'s non payées reportées':' non payée reportée')+' sur '+esc(ymLabel(CUR))+'.</div>':'');
-  var unp=m.fixed.filter(function(x){return !x.paid}).length,fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unp?'o':'g';
-  return '<section class="card"><div class="fxh"><div class="rwrap">'+ringSvg(fp,fk)+'<div class="rv">'+Math.round(fp)+'%</div></div><div class="stat"><div class="lbl2">Charges du mois</div><div class="bigv">'+fmt(c.fixedPaid)+' <span class="muted">/ '+fmt(c.fixedPlanned)+'</span></div><div class="small '+(unp?'muted':'pos')+'">'+(unp?unp+' à payer · reste '+fmt(c.fixedRemain):'Tout est payé')+'</div></div></div>'+
+  var nCar=pool.filter(function(x){return m.carry&&m.carry[x.id]}).length;
+  var carNote=nCar?'<div class="note warn">'+nCar+' charge'+(nCar>1?'s reportées':' reportée')+' de mois précédents : elles restent ici tant qu’elles ne sont pas cochées.</div>':(m.carriedOut&&!xt?'<div class="note">'+m.carriedOut+' charge'+(m.carriedOut>1?'s non payées reportées':' non payée reportée')+' sur '+esc(ymLabel(CUR))+'.</div>':'');
+  var unp=pool.filter(function(x){return !x.paid}).length,fp=P0>0?P1/P0*100:0,fk=unp?'o':'g';
+  return '<section class="card"><div class="fxh"><div class="rwrap">'+ringSvg(fp,fk)+'<div class="rv">'+Math.round(fp)+'%</div></div><div class="stat"><div class="lbl2">'+(xt?'Extra du mois':'Charges fixes du mois')+'</div><div class="bigv">'+fmt(P1)+' <span class="muted">/ '+fmt(P0)+'</span></div><div class="small '+(unp?'muted':'pos')+'">'+(unp?unp+' à payer · reste '+fmt(P2):(pool.length?'Tout est payé':'Rien ce mois-ci'))+'</div></div></div>'+
     '<p class="small muted" style="margin:12px 0 0">Coche = payé · le montant est modifiable</p>'+carNote+'</section>'+
-    (html||'<div class="empty card">Aucune charge. Ajoute-en ici ou dans l’onglet Modèle.</div>')+
-    '<section class="card"><h2>Ajouter une charge pour ce mois</h2><form class="form" data-form="add-fixed">'+
-      '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
-      '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
+    (html||'<div class="empty card">'+(xt?'Aucun extra ce mois-ci.':'Aucune charge fixe. Ajoute-en dans l’onglet Modèle.')+'</div>')+(xt?
+    '<section class="card"><h2>Ajouter un extra</h2><p class="small muted" style="margin:0 0 10px">Charge ponctuelle (chèque, cadeau…). Elle compte dans la base des PAF.</p><form class="form" data-form="add-fixed">'+
+      '<input type="hidden" name="group" value="Extra">'+
+      '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></section>';
+      '<button class="btn primary add" type="submit">Ajouter</button></form></section>':'<p class="small muted" style="margin:4px 2px">Charges ponctuelles : onglet Extra. Charges permanentes : onglet Modèle.</p>');
 }
 
 function restoOf(m){return typeof m.resto==='number'?m.resto:(typeof state.config.resto==='number'?state.config.resto:60)}
@@ -1123,7 +1133,7 @@ function render(){
   paintStatus();
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele'].indexOf(state.tab)>=0))?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,depenses:vDep,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
   var keepFocus=null;
   var nowT=Date.now(),an=nowT-(anLast[state.tab]||0)>5000;anLast[state.tab]=nowT;
   $('#view').innerHTML='<div class="syn'+(an?' an':'')+'" style="display:contents">'+f(m,c)+'</div>';
