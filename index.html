@@ -368,7 +368,6 @@ function vSynth(m,c){
   '<div class="grid2">'+
     '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div></div>'+
     '<div class="kpi"><div class="l">Reste à payer (charges)</div><div class="v">'+fmt(c.fixedRemain)+'</div></div>'+
-    '<div class="kpi"><div class="l">Marge prévue</div><div class="v '+(c.marginPlanned>=0?'pos':'neg')+'">'+sgn(c.marginPlanned)+'</div></div>'+
     '<div class="kpi"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
   '<section class="card"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
