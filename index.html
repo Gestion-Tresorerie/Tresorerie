@@ -698,10 +698,13 @@ function bankLoad(){
   bankCall('/status').then(function(x){bank.busy=false;if(x.ok){bank.st=x.d;bank.msg=''}else bank.msg='Session expirée : reconnecte-toi.';render();if(x.ok&&x.d.linked&&!x.d.expired)bankTx(false)}).catch(bankFail);
 }
 function bankTx(force){
+  var oldF=bank.fetched,oldIds={};(bank.tx||[]).forEach(function(t){oldIds[t.id]=1});
   bank.busy=true;render();
   bankCall('/transactions'+(force?'?refresh=1':'')).then(function(x){
     bank.busy=false;
-    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';if(x.d.balance&&typeof x.d.balance.amount==='number'){bank.bal={amount:x.d.balance.amount,date:x.d.balance.date||null,at:x.d.fetched_at||new Date().toISOString()};try{localStorage.setItem('budget-bank-bal',JSON.stringify(bank.bal))}catch(e){}}try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
+    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';
+      var nn=bank.tx.filter(function(t){return !oldIds[t.id]}).length;
+      bank.note=force?((oldF&&x.d.fetched_at===oldF)?'Fortuneo n’a pas été réinterrogé (limite d’actualisations atteinte) : données inchangées.':(nn?'Actualisé : '+nn+' nouvelle'+(nn>1?'s':'')+' opération'+(nn>1?'s':'')+'.':'Actualisé : aucune nouvelle opération.')):'';if(x.d.balance&&typeof x.d.balance.amount==='number'){bank.bal={amount:x.d.balance.amount,date:x.d.balance.date||null,at:x.d.fetched_at||new Date().toISOString()};try{localStorage.setItem('budget-bank-bal',JSON.stringify(bank.bal))}catch(e){}}try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
     else bank.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement bancaire a expiré : reconnecte Fortuneo.':'Impossible de récupérer les transactions ('+(x.d&&x.d.error||x.status)+').';
     render()}).catch(bankFail);
 }
@@ -761,6 +764,14 @@ function bkChip(t){var c=bkClassify(t),o='';
   else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
   var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))o+='<span class="tg warn">→ '+esc(ymLabel(mk))+'</span>';
   if(t.pending)o+='<span class="tg warn">en attente</span>';return o}
+function bkFresh(){
+  if(!bank.fetched)return bank.busy?'<div class="note">Actualisation en cours…</div>':'';
+  var f=new Date(bank.fetched),age=Math.max(0,Math.round((Date.now()-f)/6e4)),
+    rel=age<1?'à l’instant':(age<60?'il y a '+age+' min':(age<1440?'il y a '+Math.round(age/60)+' h':'il y a '+Math.round(age/1440)+' j')),
+    last=(bank.tx||[]).reduce(function(a,t){return (!t.pending&&t.date>a)?t.date:a},''),
+    ok=age<=120&&!bank.busy;
+  return '<section class="card"><div class="line" style="border:0"><span><b>Données Fortuneo</b><br><span class="small muted">interrogées '+rel+' ('+f.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')'+(last?' · dernière opération le '+esc(last.split('-').reverse().join('/')):'')+'</span></span><span class="tg '+(ok?'ok':'warn')+'">'+(bank.busy?'Actualisation…':(ok?'À jour':'Ancien'))+'</span></div>'+
+    (bank.note?'<div class="small" style="margin-top:8px">'+esc(bank.note)+'</div>':'')+'</section>'}
 function vBank(){
   var h='';
   if(bank.msg)h+='<div class="note warn">'+esc(bank.msg)+'</div>';
@@ -782,6 +793,7 @@ function vBank(){
       '<button class="btn" data-bank="refresh"'+(bank.busy||st.expired?' disabled':'')+'>Actualiser</button></div>';
   }
   h+='<div class="small muted" style="margin-top:10px">Connecté : '+esc(st&&st.user||'')+' · <button class="btn" style="padding:2px 8px" data-bank="logout">Déconnexion</button></div></section>';
+  h+=bkFresh();
   if(bank.sum&&(bank.sum.ticked||bank.sum.pafs||bank.sum.credits||bank.sum.extras))h+='<div class="note">Synchro : '+bank.sum.ticked+' charge(s) cochée(s), '+bank.sum.pafs+' PAF reçue(s), '+bank.sum.credits+' autre(s) crédit(s) et '+bank.sum.extras+' dépense(s) ajoutés.</div>';
   if(bank.tx){
     var end=ym+'-31',list=bank.tx.filter(function(t){return t.date&&bkMonthKey(t)===ym});
