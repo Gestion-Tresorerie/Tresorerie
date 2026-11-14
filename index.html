@@ -276,6 +276,16 @@ input.num{font-size:16px;padding:11px 10px}
 .ro [data-ed],.ro [data-lk],.ro [data-fx],.ro [data-bs],.ro [data-act="del"]{pointer-events:none}
 .ro input:disabled,.ro select:disabled{opacity:.8;-webkit-text-fill-color:currentColor}
 .ro .btn:disabled,.ro .x:disabled{opacity:.4}
+.kp3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.kp3 .kpi{padding:10px}.kp3 .kpi .v{font-size:15px}
+.msec{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 4px 2px}
+.mgh{display:flex;justify-content:space-between;align-items:center;width:100%;gap:10px;background:none;border:0;padding:2px 0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mgh>span:first-child{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.mgh .gc{margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--line);font-size:11px;letter-spacing:0}
+.mgh .n{font:600 14px var(--mono);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chev{display:inline-block;font-size:18px;color:var(--muted);transform:rotate(90deg);transition:transform .2s;margin-left:4px}.chev.up{transform:rotate(-90deg)}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.mrow:first-of-type{margin-top:8px}.mrow .t{display:flex;flex-direction:column;gap:5px;min-width:0}.mrow .nm{font-weight:600;font-size:15px;line-height:1.25}.mrow .n{font:600 15px var(--mono);white-space:nowrap}
+.edsh{display:grid;gap:8px;padding:4px 0 14px}.edsh .edbt{display:flex;gap:8px}
 </style>
 </head>
 <body>
@@ -791,44 +801,40 @@ function vDep(m,c){
     '<section class="card"><h2>Dépenses du mois · '+fmt(c.extrasTotal)+(c.restoSpent?' <span class="muted" style="font-weight:400">+ '+fmt(c.restoSpent)+' resto</span>':'')+'</h2>'+(list||'<div class="empty">Aucune dépense hors charges.</div>')+'</section>';
 }
 
+var cf={id:null},md={tools:true,addfx:true,addcr:true};
+function mdHead(k,title,right,count){return '<button class="mgh" data-md="tog" data-k="'+esc(k)+'" aria-expanded="'+(md[k]?'false':'true')+'"><span><b>'+title+'</b>'+(count!=null?' <span class="gc">'+count+'</span>':'')+'</span><span class="n">'+right+'<span class="chev'+(md[k]?'':' up')+'">›</span></span></button>'}
 function vModel(){
   var cfg=state.config;
-  var gopts=function(sel){return GROUPS.map(function(g){return '<option'+(g===sel?' selected':'')+'>'+esc(g)+'</option>'}).join('')};
+  var gopts=function(sel){return GROUPS.concat(cfg.fixed.map(function(t){return t.group}).filter(function(g,i,a){return GROUPS.indexOf(g)<0&&a.indexOf(g)===i})).map(function(g){return '<option'+(g===sel?' selected':'')+'>'+esc(g)+'</option>'}).join('')};
   var wopts=function(sel){return cfg.contributors.concat(['Autre']).map(function(w){return '<option'+(w===sel?' selected':'')+'>'+esc(w)+'</option>'}).join('')};
-  var fx=cfg.fixed.map(function(t){
-    return '<div class="cfgrow fx"><input type="text" data-cfg="fixed" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé">'+
-      '<select data-cfg="fixed" data-id="'+t.id+'" data-f="group" aria-label="Groupe">'+gopts(t.group)+'</select>'+
-      '<input class="num" inputmode="decimal" data-cfg="fixed" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant">'+
-      '<button class="x" data-act="cfgdel" data-list="fixed" data-id="'+t.id+'" aria-label="Supprimer">×</button></div>'+(t.from&&t.months?'<div class="small muted" style="margin:-2px 0 8px 4px">'+t.months+' mois : '+esc(ymLabel(t.from))+' → '+esc(ymLabel(tplEnd(t)))+'</div>':(t.from?'<div class="small muted" style="margin:-2px 0 8px 4px">Depuis '+esc(ymLabel(t.from))+' · sans fin</div>':''));
-  }).join('');
-  var cr=cfg.credits.map(function(t){
-    return '<div class="cfgrow fx"><input type="text" data-cfg="credits" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé">'+
-      '<select data-cfg="credits" data-id="'+t.id+'" data-f="who" aria-label="De la part de">'+wopts(t.who)+'</select>'+
-      (t.kind?'<span class="small muted" style="text-align:right">auto</span>':'<input class="num" inputmode="decimal" data-cfg="credits" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant">')+
-      '<button class="x" data-act="cfgdel" data-list="credits" data-id="'+t.id+'" aria-label="Supprimer">×</button></div>';
-  }).join('');
-  var names=cfg.contributors.map(function(n,i){return '<input type="text" data-contrib="'+i+'" value="'+esc(n)+'" aria-label="Contributeur '+(i+1)+'">'}).join('');
-  var tot=sum(cfg.fixed,function(t){return t.amount});
-  var inc=cfg.contributors.slice(0,2).map(function(n,i){return '<label class="small muted">Revenu net mensuel '+esc(n)+'<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label>'}).join('');
-  return '<section class="card"><h2>Contributeurs</h2><div class="grid2">'+names+'</div></section>'+
-    '<section class="card"><h2>Répartition des charges</h2><p class="small muted" style="margin:0 0 10px">Part de chacun = revenu net / total des revenus nets, appliquée aux charges + enveloppe courses. Ces revenus sont ceux par défaut : modifiables mois par mois dans l’onglet Revenus.</p><div class="grid2">'+inc+'</div>'+
-            '<label class="small muted" style="display:block;margin-top:10px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste arrive le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>'+
-    '<section class="card"><h2>Charges par défaut · '+fmt(tot)+'</h2>'+(fx||'<div class="empty">Aucune ligne.</div>')+
-      '<form class="form" data-form="cfg-fixed"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
-      '<select name="group" aria-label="Groupe">'+gopts('')+'</select>'+
-      '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
-      '<button class="btn primary full" type="submit">Ajouter au modèle</button></form></section>'+
-    '<section class="card"><h2>Revenus par défaut</h2>'+(cr||'<div class="empty">Aucune ligne.</div>')+
-      '<form class="form" data-form="cfg-credit"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
-      '<select name="who" aria-label="De la part de">'+wopts('')+'</select>'+
-      '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
-      '<button class="btn primary full" type="submit">Ajouter au modèle</button></form></section>'+
-    '<section class="card"><h2>Enveloppe courses par défaut</h2><input class="num" inputmode="decimal" data-cfgcourses="1" value="'+inp(cfg.courses)+'" aria-label="Enveloppe courses par défaut"></section>'+
-    '<section class="card"><h2>Tickets resto par défaut</h2><p class="small muted" style="margin:0 0 10px">Budget en plus des courses, non déduit des PAF. Modifiable chaque mois dans l’onglet Dépenses.</p><input class="num" inputmode="decimal" data-cfgresto="1" value="'+inp(cfg.resto)+'" aria-label="Tickets resto par défaut"></section>'+
-    '<section class="card"><h2>Ce mois-ci</h2><p class="small muted" style="margin:0 0 10px">Les changements du modèle s’appliquent aux mois non encore modifiés. Pour un mois déjà commencé, ajoute les lignes manquantes :</p>'+
-      '<button class="btn" data-act="applytpl">Ajouter les lignes du modèle manquantes à '+esc(ymLabel(ym))+'</button></section>'+
-    '<section class="card"><h2>Sauvegarde</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="copybk">Copier la sauvegarde</button><button class="btn" data-act="restore">Restaurer depuis le texte</button></div>'+
-      '<textarea id="bk" placeholder="Colle ici une sauvegarde JSON pour restaurer" style="margin-top:10px" aria-label="Sauvegarde JSON"></textarea><div id="bkmsg" class="small muted" style="margin-top:6px"></div></section>';
+  var tot=sum(cfg.fixed,function(t){return t.amount}),net=num(cfg.incomes[0])+num(cfg.incomes[1]),base=tot+num(cfg.courses),rate=net>0?base/net:0;
+  var kp='<section class="card"><h2>Vue d’ensemble</h2><div class="kp3"><div class="kpi"><div class="l">Charges</div><div class="v">'+fmt(tot)+'</div></div><div class="kpi"><div class="l">+ Courses</div><div class="v">'+fmt(base)+'</div></div><div class="kpi"><div class="l">Revenus nets</div><div class="v">'+fmt(net)+'</div></div></div>'+
+    '<div class="small muted" style="margin-top:10px">Base à financer : '+fmt(base)+' = <b>'+pct(rate)+'</b> des revenus nets. Partagée au prorata des revenus.</div></section>';
+  var foyer='<section class="card"><h2>Foyer</h2><div class="grid2">'+cfg.contributors.slice(0,2).map(function(n,i){return '<div><label class="small muted">Prénom<input type="text" data-contrib="'+i+'" value="'+esc(n)+'" style="margin-top:4px"></label><label class="small muted" style="display:block;margin-top:10px">Revenu net / mois<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label></div>'}).join('')+'</div>'+
+    '<label class="small muted" style="display:block;margin-top:12px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>';
+  var rowFx=function(t){
+    var note=t.from&&t.months?t.months+' mois · jusqu’à '+ymLabel(tplEnd(t)):(t.from?'depuis '+ymLabel(t.from)+' · sans fin':'');
+    return '<div class="mrow tap" role="button" data-md="open" data-id="'+t.id+'"><span class="t"><span class="nm">'+esc(t.label)+'</span>'+(note?'<span class="tags"><span class="tag tb">'+esc(note)+'</span></span>':'')+'</span><span class="n">'+fmt(t.amount)+'</span></div>'+
+    (cf.id===t.id?'<div class="edsh"><input type="text" data-cfg="fixed" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé"><div class="grid2"><select data-cfg="fixed" data-id="'+t.id+'" data-f="group" aria-label="Groupe">'+gopts(t.group)+'</select><input class="num" inputmode="decimal" data-cfg="fixed" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant"></div>'+
+      '<div class="edbt"><button class="btn mini" data-md="open" data-id="'+t.id+'">Fermer</button><button class="btn mini neg" data-act="cfgdel" data-list="fixed" data-id="'+t.id+'">Supprimer</button></div></div>':'');
+  };
+  var groups=GROUPS.slice();cfg.fixed.forEach(function(t){if(groups.indexOf(t.group)<0)groups.push(t.group)});
+  var fxh=groups.map(function(g){var it=cfg.fixed.filter(function(t){return t.group===g});if(!it.length)return '';var gt=sum(it,function(t){return t.amount});
+    return '<section class="card">'+mdHead('g:'+g,esc(g),fmt(gt)+(tot>0?' <span class="muted small">'+Math.round(gt/tot*100)+' %</span> ':''),it.length)+(md['g:'+g]?'':it.map(rowFx).join(''))+'</section>'}).join('');
+  var addfx='<section class="card">'+(md.addfx?'<button class="btn" data-md="tog" data-k="addfx">+ Ajouter une charge au modèle</button>':
+    '<h2>Nouvelle charge du modèle</h2><form class="form" data-form="cfg-fixed"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé"><select name="group" aria-label="Groupe">'+gopts('')+'</select><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button> <button class="btn" type="button" data-md="tog" data-k="addfx">Annuler</button></form>')+'</section>';
+  var rowCr=function(t){
+    return '<div class="mrow tap" role="button" data-md="open" data-id="'+t.id+'"><span class="t"><span class="nm">'+esc(t.label)+'</span><span class="tags"><span class="tag">'+esc(t.who||'Autre')+'</span></span></span><span class="n">'+(t.kind?'<span class="muted small">auto</span>':fmt(t.amount))+'</span></div>'+
+    (cf.id===t.id?'<div class="edsh"><input type="text" data-cfg="credits" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé"><div class="grid2"><select data-cfg="credits" data-id="'+t.id+'" data-f="who" aria-label="De la part de">'+wopts(t.who)+'</select>'+(t.kind?'<span class="small muted" style="align-self:center">montant automatique</span>':'<input class="num" inputmode="decimal" data-cfg="credits" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant">')+'</div>'+
+      '<div class="edbt"><button class="btn mini" data-md="open" data-id="'+t.id+'">Fermer</button><button class="btn mini neg" data-act="cfgdel" data-list="credits" data-id="'+t.id+'">Supprimer</button></div></div>':'');
+  };
+  var crh='<section class="card">'+mdHead('rev','Revenus par défaut','',cfg.credits.length)+(md.rev?'':(cfg.credits.map(rowCr).join('')||'<div class="empty">Aucune ligne.</div>')+
+    (md.addcr?'<button class="btn" data-md="tog" data-k="addcr" style="margin-top:10px">+ Ajouter un revenu</button>':'<form class="form" data-form="cfg-credit"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé"><select name="who" aria-label="De la part de">'+wopts('')+'</select><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button> <button class="btn" type="button" data-md="tog" data-k="addcr">Annuler</button></form>'))+'</section>';
+  var env='<section class="card"><h2>Enveloppes mensuelles</h2><div class="grid2"><label class="small muted">Courses<input class="num" inputmode="decimal" data-cfgcourses="1" value="'+inp(cfg.courses)+'" aria-label="Enveloppe courses par défaut" style="margin-top:4px"></label><label class="small muted">Tickets resto<input class="num" inputmode="decimal" data-cfgresto="1" value="'+inp(cfg.resto)+'" aria-label="Tickets resto par défaut" style="margin-top:4px"></label></div><p class="small muted" style="margin:10px 0 0">Courses : comptées dans la base des PAF. Tickets resto : en plus, hors PAF. Modifiables chaque mois dans Dépenses.</p></section>';
+  var tools='<section class="card">'+mdHead('tools','Outils &amp; sauvegarde','')+(md.tools?'':'<p class="small muted" style="margin:6px 0 10px">Les changements du modèle s’appliquent aux mois non encore modifiés. Pour un mois déjà commencé :</p><button class="btn" data-act="applytpl">Ajouter les lignes manquantes à '+esc(ymLabel(ym))+'</button>'+
+    '<div class="grp" style="margin-top:16px"><b>Sauvegarde</b></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" data-act="copybk">Copier la sauvegarde</button><button class="btn" data-act="restore">Restaurer depuis le texte</button></div>'+
+    '<textarea id="bk" placeholder="Colle ici une sauvegarde JSON pour restaurer" style="margin-top:10px" aria-label="Sauvegarde JSON"></textarea><div id="bkmsg" class="small muted" style="margin-top:6px"></div>')+'</section>';
+  return kp+foyer+'<div class="msec">Charges fixes par défaut</div>'+fxh+addfx+'<div class="msec">Revenus &amp; enveloppes</div>'+crh+env+tools;
 }
 
 /* ---------- Banque (Fortuneo via passerelle Cloudflare) ---------- */
@@ -1309,6 +1315,11 @@ document.addEventListener('change',function(e){
   else if(el.dataset.courses){var m4=editM(ym);m4.courses.planned=num(el.value);commitM()}
 });
 
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-md]');if(!t)return;
+  if(t.dataset.md==='open'){cf.id=(cf.id===t.dataset.id)?null:t.dataset.id;render()}
+  else if(t.dataset.md==='tog'){md[t.dataset.k]=!md[t.dataset.k];render()}
+});
 document.addEventListener('click',function(e){
   var t=e.target.closest('button[data-ns]');if(!t)return;var N=nsd(),id=t.dataset.id;
   if(t.dataset.ns==='del'){N.ledger=N.ledger.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
