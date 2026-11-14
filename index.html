@@ -550,7 +550,7 @@ function vModel(){
 
 /* ---------- Banque (Fortuneo via passerelle Cloudflare) ---------- */
 var BANK_API='https://budget-bank.hasina-rasolo.workers.dev';
-var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false};
+var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false,sum:null};
 try{bank.token=localStorage.getItem('budget-bank-token')||null}catch(e){}
 function bankCall(path,opts){
   opts=opts||{};var h={'Content-Type':'application/json'};if(bank.token)h.Authorization='Bearer '+bank.token;
@@ -568,9 +568,16 @@ function bankTx(force){
   bank.busy=true;render();
   bankCall('/transactions'+(force?'?refresh=1':'')).then(function(x){
     bank.busy=false;
-    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg=''}
+    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
     else bank.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement bancaire a expiré : reconnecte Fortuneo.':'Impossible de récupérer les transactions ('+(x.d&&x.d.error||x.status)+').';
     render()}).catch(bankFail);
+}
+function bkTag(t){
+  var c=bkClassify(t),n='';
+  if(c.k==='fixed'){var f=state.config.fixed.filter(function(x){return x.id===c.tid})[0];n='charge : '+(f?f.label:c.tid)}
+  else if(c.k==='paf')n='PAF '+c.who;else if(c.k==='credit')n='crédit';else n=c.cat;
+  var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))n+=' · '+ymLabel(mk);
+  return ' · '+esc(n);
 }
 function vBank(){
   var h='';
@@ -593,11 +600,12 @@ function vBank(){
       '<button class="btn" data-bank="refresh"'+(bank.busy||st.expired?' disabled':'')+'>Actualiser</button></div>';
   }
   h+='<div class="small muted" style="margin-top:10px">Connecté : '+esc(st&&st.user||'')+' · <button class="btn" style="padding:2px 8px" data-bank="logout">Déconnexion</button></div></section>';
+  if(bank.sum&&(bank.sum.ticked||bank.sum.pafs||bank.sum.credits||bank.sum.extras))h+='<div class="note">Synchro : '+bank.sum.ticked+' charge(s) cochée(s), '+bank.sum.pafs+' PAF reçue(s), '+bank.sum.credits+' autre(s) crédit(s) et '+bank.sum.extras+' dépense(s) ajoutés.</div>';
   if(bank.tx){
     var end=ym+'-31',list=bank.tx.filter(function(t){return t.date&&t.date.slice(0,7)===ym});
     var tin=sum(list,function(t){return t.amount>0?t.amount:0}),tout=sum(list,function(t){return t.amount<0?-t.amount:0});
     h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin-bottom:6px">Entrées '+fmt(tin)+' · Sorties '+fmt(tout)+(bank.fetched?' · mis à jour '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'')+'</div>'+
-      (list.length?list.map(function(t){return '<div class="line"><span class="t">'+esc(t.label||'—')+'<br><span class="small muted">'+esc(t.date)+(t.pending?' · en attente':'')+'</span></span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération ce mois-ci.</div>')+'</section>';
+      (list.length?list.map(function(t){return '<div class="line"><span class="t">'+esc(t.label||'—')+'<br><span class="small muted">'+esc(t.date)+(t.pending?' · en attente':'')+bkTag(t)+'</span></span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération ce mois-ci.</div>')+'</section>';
   }
   return h;
 }
@@ -616,6 +624,60 @@ document.addEventListener('submit',function(e){
     else{bank.msg=x.status===429?'Trop de tentatives. Réessaie dans 15 minutes.':'Identifiants incorrects.';render()}
   }).catch(bankFail);
 });
+
+
+/* ---- Rapprochement bancaire ---- */
+function bkNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()}
+var BK_FIX=[['tel-enfant',/TELEPHONE|TEL RAF|RAFAELLE.*BOUYGUES|BOUYGUES.*RAFAELLE/],['internet',/BOUYGUES|INTERNET|BBOX/],['loyer',/BL0945895|NEXITY|LOYER/],['credit-regroupe',/CA CONSUMER|CONSUMER FINANCE|CREDIT REGROUPE/],['leasing',/VOLKSWAGEN/],['ass-tcross',/TCROSS|T-CROSS|T CROSS/],['ass-bmw',/\bAXA\b/],['ass-hab',/ACHEEL/],['elec',/TOTAL ?ENERGIES|ELECTRICITE/],['cantine',/DDFIP|PRESTO|\bSGC\b|REST\.? ?SCOLAIRE|ALSH|CANTINE/],['musique',/CONSERVATOIRE|HECTOR/],['tresorerie',/SAKAFO|DADA|TRESO/]];
+var BK_CAT=[['Courses',/SODISCA|AUCHAN|LIDL|CARREFOUR|SUPER U|MONOPRIX|ALDI|INTERMARCHE|GRAND FRAIS|CASINO|BOULANGERIE|MARCHE|COURSES|PARIS STORE|FRANPRIX|BIOCOOP|SOLIBE/],['Santé',/PHARM|DOCTEUR|\bDR\b|ORTHO|CLINIQUE|OPHTAL|DOCTOLIB|RADIO|NOVEOC|CPAM|MEDECIN|LABORATOIRE/],['Transport',/\bTAM\b|VOIRIE|STATIONNEMENT|PARK|PEAGE|CARBURANT|STATION|SNCF|UBER/],['Enfants & école',/ECOLE|COLLEGE|PHOTO|SCOLAIRE/],['Loisirs',/RESTAU|CINE|AMIKADO|NETFLIX|SPOTIFY|BETM|ACTION|FNAC|AMAZON|KAYAK/]];
+var BK_MONTHS={JANV:1,JANVIER:1,FEV:2,FEVR:2,FEVRIER:2,MARS:3,AVR:4,AVRIL:4,MAI:5,JUIN:6,JUIL:7,JUILLET:7,AOUT:8,SEPT:9,SEPTEMBRE:9,OCT:10,OCTT:10,OCTOBRE:10,NOV:11,NOVEMBRE:11,DEC:12,DECEMBRE:12};
+function bkMonthKey(t){
+  var d=t.date||'',base=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(base))return null;
+  var L=bkNorm(t.label),m=/\b(JANV(?:IER)?|FEV(?:R(?:IER)?)?|MARS|AVR(?:IL)?|MAI|JUIN|JUIL(?:LET)?|AOUT|SEPT(?:EMBRE)?|OCT(?:T|OBRE)?|NOV(?:EMBRE)?|DEC(?:EMBRE)?)\b/.exec(L);
+  if(!m)return base;
+  var mo=BK_MONTHS[m[1]],by=+base.slice(0,4),bm=+base.slice(5,7),y=by;
+  if(mo<bm-6)y=by+1;else if(mo>bm+6)y=by-1;
+  var diff=(y*12+mo)-(by*12+bm);
+  if(diff!==0&&diff!==1)return base;
+  return y+'-'+(mo<10?'0':'')+mo;
+}
+function bkClassify(t){
+  var L=bkNorm(t.label);
+  if(t.amount>0){
+    if(/\bPAF\b|PARTICIP/.test(L))return {k:'paf',who:/LINDA|MADAME|\bMME\b/.test(L)?'Linda':'Hasina'};
+    return {k:'credit'};
+  }
+  for(var i=0;i<BK_FIX.length;i++)if(BK_FIX[i][1].test(L))return {k:'fixed',tid:BK_FIX[i][0]};
+  var cat='Autre';for(var j=0;j<BK_CAT.length;j++)if(BK_CAT[j][1].test(L)){cat=BK_CAT[j][0];break}
+  return {k:'extra',cat:cat};
+}
+function bankSync(){
+  var s={ticked:0,pafs:0,credits:0,extras:0},touched={};
+  var list=(bank.tx||[]).filter(function(t){return !t.pending&&t.id&&t.amount}).sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)});
+  list.forEach(function(t){
+    var key=bkMonthKey(t);if(!key)return;
+    var ex=state.months[key];
+    if(ex&&ex.imported)return;
+    if(ex&&ex.bankSeen&&ex.bankSeen[t.id])return;
+    var m=editM(key);m.bankSeen=m.bankSeen||{};m.bankSeen[t.id]=1;touched[key]=1;
+    var c=bkClassify(t),amt=Math.abs(t.amount),done=false,i;
+    if(c.k==='fixed'){
+      for(i=0;i<m.fixed.length;i++)if(m.fixed[i].tid===c.tid&&!m.fixed[i].paid){m.fixed[i].paid=true;m.fixed[i].actual=amt;m.fixed[i].bank=true;s.ticked++;done=true;break}
+      if(!done)c={k:'extra',cat:'Autre'};
+    }else if(c.k==='paf'){
+      var cr=null;
+      for(i=0;i<m.credits.length&&!cr;i++){var x=m.credits[i];if(x.done)continue;
+        if(c.who==='Linda'&&x.kind==='paf'&&x.who==='Linda')cr=x;
+        else if(c.who==='Hasina'&&(x.kind==='paf1'||x.kind==='paf2'))cr=x}
+      if(cr){cr.done=true;cr.actual=amt;cr.bank=true;s.pafs++;done=true}else c={k:'credit'};
+    }
+    if(!done&&c.k==='credit'){m.credits.push({id:uid(),label:String(t.label||'Crédit').slice(0,48),who:'Autre',planned:amt,actual:amt,done:true,kind:null,bank:true});s.credits++}
+    else if(!done&&c.k==='extra'){m.extras.push({id:uid(),label:String(t.label||'Dépense').slice(0,48),cat:c.cat,amount:amt,date:t.date,bankId:t.id});s.extras++}
+  });
+  var ks=Object.keys(touched);
+  if(ks.length){ks.forEach(function(k){touch('m-'+k)});resetVirt()}
+  return s;
+}
 
 function render(){
   $('#month').textContent=ymLabel(ym);
