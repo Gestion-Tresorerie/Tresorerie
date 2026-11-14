@@ -74,7 +74,7 @@ main{padding:14px 0 24px;display:flex;flex-direction:column;gap:14px}
 .kpi .v{font-family:var(--mono);font-size:18px;font-weight:500;margin-top:2px}
 .bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
 .bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
-.bar.over>i{background:var(--bad)}
+.bar.over>i{background:var(--bad)}.bar.ok>i{background:var(--good)}
 .line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
 .line:first-of-type{border-top:0}
 .line .n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -335,7 +335,7 @@ function initDb(){
 
 /* ---------- vues ---------- */
 function paintStatus(){var s=STATUS[state.status]||STATUS.loading;var el=$('#status');el.className='chip '+s.cls;el.textContent=s.txt}
-function bar(v,max){var p=max>0?Math.max(0,Math.min(100,v/max*100)):0;return '<div class="bar'+(v>max&&max>0?' over':'')+'"><i style="width:'+p.toFixed(1)+'%"></i></div>'}
+function bar(v,max,good){var p=max>0?Math.max(0,Math.min(100,v/max*100)):0;var k=good?(max>0&&v>=max-0.005?' ok':''):(v>max&&max>0?' over':'');return '<div class="bar'+k+'"><i style="width:'+p.toFixed(1)+'%"></i></div>'}
 function who(m){return state.config.contributors.concat(['Autre'])}
 
 function pct(p){return (Math.round(p*1000)/10).toString().replace('.',',')+' %'}
@@ -350,7 +350,7 @@ function vShare(m,c,full){
     var rest=full?(S.income[i]>0?'<div class="line" style="border:0;padding:8px 0 0"><span>Budget restant <span class="small muted">(revenu net '+fmt(S.income[i])+' − part)</span></span><span class="n '+(left>=0?'pos':'neg')+'"><b>'+fmt(left)+'</b></span></div>':'<div class="note warn">Revenu net non renseigné : budget restant indisponible.</div>'):'';
     var over=S.over[i]?'<div class="note bad">Part supérieure au revenu net ('+fmt(S.income[i])+').</div>':'';
     return '<div class="share"><div class="line" style="border:0;padding-bottom:2px"><span><b>'+esc(name)+'</b> <span class="pill">'+pct(S.p[i])+'</span></span><span class="n"><b>'+fmt(S.share[i])+'</b></span></div>'+
-      detail+bar(got,S.share[i])+'<div class="small muted" style="margin-top:4px">Versé '+fmt(got)+' sur '+fmt(S.share[i])+(got<S.share[i]?' · reste à verser '+fmt(S.share[i]-got):'')+'</div>'+over+rest+'</div>';
+      detail+bar(got,S.share[i],true)+'<div class="small muted" style="margin-top:4px">Versé '+fmt(got)+' sur '+fmt(S.share[i])+(got<S.share[i]?' · reste à verser '+fmt(S.share[i]-got):'')+'</div>'+over+rest+'</div>';
   }).join('');
   return '<section class="card tap" role="button" data-act="tab" data-tab="revenus"><h2>Répartition des charges</h2>'+warn+
     '<div class="line" style="border:0;padding-top:0"><span class="muted small">Charges + courses à financer</span><span class="n"><b>'+fmt(S.base)+'</b></span></div>'+rows+'</section>';
