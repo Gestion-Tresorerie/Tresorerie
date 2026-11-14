@@ -628,7 +628,7 @@ function vSynth(m,c){
   (function(){var b=balNow(),dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
     return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en attente ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">comptable '+fmt(b.booked)+'</span></div>':(b.avail?'<div class="small muted" style="margin-top:4px">Solde disponible : inclut les opérations en attente</div>':'')):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
   rings+
-  vTodo(m,c)+
+  vTodo(m,c)+vAdv()+
   '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div><div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
     '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
@@ -1185,6 +1185,12 @@ function doSync(silent){
 function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages'],['banque','Banque','Connexion Fortuneo, synchro, opérations']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
 var nsErr='',NSN={h:'Hasina',l:'Linda',b:'Compte joint'};
 function nsName(k){var cn=state.config.contributors;return k==='h'?(cn[0]||'Hasina'):(k==='l'?(cn[1]||'Linda'):'Compte joint')}
+function vAdv(){
+  var L=nsd().ledger.filter(function(x){return !x.done}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
+  if(!L.length)return '';
+  var tot=Math.round(sum(L,function(x){return num(x.amount)})*100)/100;
+  var rows=L.map(function(x){return '<div class="line"><span class="t"><span class="nm">'+esc(x.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag">'+esc(nsName(x.by))+' a avancé</span><span class="tag '+(x.owe==='b'?'tw':'tb')+'">'+esc(nsName(x.owe))+' rembourse</span></span></span><span class="n">'+fmt(x.amount)+'</span></div>'}).join('');
+  return '<section class="card tap" role="button" data-act="tab" data-tab="nous"><h2>Frais à rembourser · '+L.length+'</h2>'+rows+'<div class="line" style="border-bottom:0"><span class="small muted">Total en attente</span><span class="n"><b>'+fmt(tot)+'</b></span></div></section>'}
 function nsDate(d){d=String(d||'');return d.length>=10?d.slice(8,10)+'/'+d.slice(5,7):d}
 function vNous(m,c){
   var N=nsd(),open=N.ledger.filter(function(x){return !x.done});
