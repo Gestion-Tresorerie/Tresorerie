@@ -344,7 +344,7 @@ function vShare(m,c,full){
   var warn=S.known?'':'<div class="note warn">Revenus nets non renseignés : répartition 50 / 50 par défaut. Renseigne-les dans l’onglet Modèle.</div>';
   var rows=[0,1].map(function(i){
     var name=cn[i]||('Personne '+(i+1));
-    var got=sum(m.credits.filter(function(x){return x.kind&&x.who===name&&x.done}),function(x){return act(x,S)});
+    var got=sum(m.credits.filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who===name&&x.done}),function(x){return act(x,S)});
     var detail=i===0?'<div class="small muted">1er du mois : '+fmt(S.firstUsed)+' · le 10 : '+fmt(S.second)+'</div><div class="small muted">Salaire perçu : '+fmt(S.salFirst)+' le 1er · '+fmt(S.salRest)+' le 10</div>':'';
     var left=S.income[i]-S.share[i];
     var rest=full?(S.income[i]>0?'<div class="line" style="border:0;padding:8px 0 0"><span>Budget restant <span class="small muted">(revenu net '+fmt(S.income[i])+' − part)</span></span><span class="n '+(left>=0?'pos':'neg')+'"><b>'+fmt(left)+'</b></span></div>':'<div class="note warn">Revenu net non renseigné : budget restant indisponible.</div>'):'';
