@@ -380,7 +380,7 @@ function getV(key){
 function resetVirt(){Object.keys(virt).forEach(function(k){delete virt[k]})}
 
 /* ---------- calculs ---------- */
-function isX(x){return !x.tid||x.xtra===true}
+function isX(x){return x.xtra===true||(!x.tid&&x.xtra!==false&&!/demi.?pension|cantine/i.test(x.label||''))}
 function sum(a,f){return a.reduce(function(s,x){return s+f(x)},0)}
 function shares(m){
   var cfg=state.config;
@@ -724,7 +724,7 @@ function vFix(m,c,xt){
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags">'+(NOTES[x.tid]?'<span class="tag tw">'+esc(NOTES[x.tid])+'</span>':'')+(fr?'<span class="tag tb">reportée de '+esc(ymLabel(fr))+'</span>':'')+(x.paid&&Math.abs(dv)>=0.5?'<span class="tag '+(dv>0?'tb':'tg')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</span>':'')+(x.bank?'<span class="tag tg">✓ Vu en banque</span>':'')+(x.grp?'<span class="tag tw">débit groupé</span>'+(!col&&bank.token?'<button class="btn mini lnk" data-lk="undo" data-id="'+x.id+'">Défaire le groupe</button>':''):'')+(!col&&bank.token&&bank.tx&&!fr&&!x.grp?(x.bankId&&x.btx?'<button class="btn mini lnk" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini lnk" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div></div>'+
+        '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags">'+(NOTES[x.tid]?'<span class="tag tw">'+esc(NOTES[x.tid])+'</span>':'')+(fr?'<span class="tag tb">reportée de '+esc(ymLabel(fr))+'</span>':'')+(x.paid&&Math.abs(dv)>=0.5?'<span class="tag '+(dv>0?'tb':'tg')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</span>':'')+(x.bank?'<span class="tag tg">✓ Vu en banque</span>':'')+(isX(x)&&!x.grp&&!x.bankId?'<button class="btn mini lnk" data-fx="tofix" data-id="'+x.id+'">→ Charge fixe</button>':'')+(x.grp?'<span class="tag tw">débit groupé</span>'+(!col&&bank.token?'<button class="btn mini lnk" data-lk="undo" data-id="'+x.id+'">Défaire le groupe</button>':''):'')+(!col&&bank.token&&bank.tx&&!fr&&!x.grp?(x.bankId&&x.btx?'<button class="btn mini lnk" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini lnk" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div></div>'+
         '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
         '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>'+(fx.id===x.id?fxSheet(x,m):'');
       }).join('')+'</section>';
@@ -946,6 +946,9 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('[data-fx]');if(!t)return;var a=t.dataset.fx;
   if(a==='open'){fx.id=(fx.id===t.dataset.id)?null:t.dataset.id;render()}
   else if(a==='close'){fx.id=null;render()}
+  else if(a==='tofix'||a==='toxtra'){var mq=editM(ym),xq=findBy(mq.fixed,t.dataset.id);if(!xq)return;
+    if(a==='tofix'){xq.xtra=false;if(GROUPS.indexOf(xq.group)<0)xq.group='Divers'}else{xq.xtra=true;xq.group='Extra'}
+    fx.id=null;commitM()}
   else if(a==='undo'){var u=editM(ym),ux=findBy(u.fixed,t.dataset.id);if(!ux||!ux.bankId)return;var bid=ux.bankId,bt=ux.btx;
     ux.paid=false;ux.actual=ux.planned;ux.bank=false;delete ux.bankId;delete ux.btx;
     if(bt&&bt.e&&!u.extras.some(function(y){return y.bankId===bid}))u.extras.push({id:uid(),label:bt.e.label,cat:bt.e.cat,amount:bt.a,date:bt.d,bankId:bid});
