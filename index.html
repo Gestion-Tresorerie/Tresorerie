@@ -235,7 +235,7 @@ function shares(m){
   var i0=num(cfg.incomes[0]),i1=num(cfg.incomes[1]),tot=i0+i1,known=tot>0;
   var p0=known?i0/tot:0.5;
   var s0=Math.round(base*p0*100)/100,s1=Math.round((base-s0)*100)/100;
-  var first=Math.min(cfg.firstPayment,num(cfg.salaryFirst)||cfg.firstPayment,s0);
+  var first=Math.min(num(cfg.salaryFirst)||s0,s0);
   var l1=null;m.credits.forEach(function(x){if(x.kind==='paf1')l1=x});
   var firstUsed=(l1&&l1.done&&l1.actual!=null)?l1.actual:first;
   var second=Math.max(0,Math.round((s0-firstUsed)*100)/100);
@@ -279,6 +279,7 @@ function loadLocal(){
   }catch(e){}
 }
 function applySeed(){try{var s=window.BUDGET_SEED;if(!s)return;var V=window.BUDGET_SEED_V||1,cur=+(localStorage.getItem('budget-seed-v')||0),n=0;Object.keys(s).forEach(function(ym){if(state.months[ym]&&cur>=V)return;var q=s[ym],i=0;function id(){return 's'+ym.replace('-','')+(++i)}state.months[ym]={ym:ym,courses:{planned:500},imported:true,credits:q.cr.map(function(c){return {id:id(),label:c[0],who:c[1],planned:c[2],actual:c[2],done:true,kind:null}}),fixed:q.fx.map(function(f){return {id:id(),label:f[0],group:f[1],planned:f[2],actual:f[2],paid:true}}),extras:q.ex.map(function(e){return {id:id(),label:e[0],cat:e[1],amount:e[2],date:ym+'-'+e[3]}})};n++});if(n){if(state.config.firstPayment===2000)state.config.firstPayment=1700;localStorage.setItem('budget-seed-v',String(V));persistLocal()}}catch(e){}}
+function applyModel(){try{if(localStorage.getItem('budget-model-v')==='1')return;var F=[['loyer','Loyer','Logement',1461.72],['credit-regroupe','Crédit regroupé (Sofinco)','Crédits & leasing',715.86],['leasing','Leasing T-Cross','Crédits & leasing',298.27],['caf-dette','Compensation dette CAF','Crédits & leasing',110],['ass-tcross','Assurance T-Cross','Assurances',138],['ass-bmw','Assurance BMW','Assurances',105.66],['ass-hab','Assurance habitation','Assurances',14.59],['elec','Électricité','Énergie & télécom',150],['internet','Internet (Bouygues)','Énergie & télécom',36.99],['tel-enfant','Téléphone Rafaelle','Énergie & télécom',23.98],['cantine','Cantine + accueil primaire','Enfants & école',209.22],['demi-pension','Collège demi-pension','Enfants & école',76.66],['musique','Musique enfant','Enfants & école',120],['tresorerie','Trésorerie famille (Sakafo)','Famille',50]];state.config.fixed=F.map(function(f){return {id:f[0],label:f[1],group:f[2],amount:f[3]}});state.config.credits=[{id:'paf-hasina-1',kind:'paf1',label:'PAF Hasina – 1er du mois',who:'Hasina',amount:0},{id:'paf-hasina-2',kind:'paf2',label:'PAF Hasina – solde du 10',who:'Hasina',amount:0},{id:'paf-linda',kind:'paf',label:'PAF Linda',who:'Linda',amount:0},{id:'caf',label:'CAF',who:'Autre',amount:347.32}];state.config.courses=500;state.config.incomes=[3322.64,1550];state.config.salaryFirst=2500;localStorage.setItem('budget-model-v','1');persistLocal()}catch(e){}}
 function docFor(id){return id==='config'?state.config:state.months[id.slice(2)]}
 function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
@@ -523,8 +524,7 @@ function vModel(){
   var inc=cfg.contributors.slice(0,2).map(function(n,i){return '<label class="small muted">Revenu net mensuel '+esc(n)+'<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label>'}).join('');
   return '<section class="card"><h2>Contributeurs</h2><div class="grid2">'+names+'</div></section>'+
     '<section class="card"><h2>Répartition des charges</h2><p class="small muted" style="margin:0 0 10px">Part de chacun = revenu net / total des revenus nets, appliquée aux charges + enveloppe courses.</p><div class="grid2">'+inc+'</div>'+
-      '<label class="small muted" style="display:block;margin-top:10px">Premier versement de '+esc(cfg.contributors[0])+' le 1er du mois, plafonné (le solde est versé le 10)<input class="num" inputmode="decimal" data-firstpay="1" value="'+inp(cfg.firstPayment)+'" style="margin-top:4px"></label>'+
-      '<label class="small muted" style="display:block;margin-top:10px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste arrive le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>'+
+            '<label class="small muted" style="display:block;margin-top:10px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste arrive le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>'+
     '<section class="card"><h2>Charges par défaut · '+fmt(tot)+'</h2>'+(fx||'<div class="empty">Aucune ligne.</div>')+
       '<form class="form" data-form="cfg-fixed"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts('')+'</select>'+
@@ -642,7 +642,7 @@ document.addEventListener('submit',function(e){
   else if(k==='cfg-credit'){state.config.credits.push({id:uid(),label:label,who:fd.get('who'),amount:amount});commitCfg()}
 });
 
-loadLocal();applySeed();
+loadLocal();applySeed();applyModel();
 render();
 initDb();
 })();
