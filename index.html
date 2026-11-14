@@ -459,21 +459,17 @@ function vSynth(m,c){
   var unpaid=m.fixed.filter(function(x){return !x.paid}).length;
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
   return ''+
-  '<section class="card hero"><h2>Marge projetée fin de mois</h2><div class="big '+cls+'">'+sgn(c.proj)+'</div>'+
-    '<div class="brk">'+mini('Reçu à ce jour','+'+fmt(c.creditsReal),'pos')+mini('Encore attendu','+'+fmt(c.incProj-c.creditsReal),'pos')+mini('Charges (payées + à payer)','−'+fmt(c.fixedProj))+mini('Courses','−'+fmt(c.coursesProj))+mini('Autres dépenses','−'+fmt(c.otherExtras))+'</div>'+
-    '<div class="small muted" style="margin-top:8px">Résultat si chacun verse sa part complète.</div></section>'+
+  (function(){var b=!col&&bank.bal,dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
+    return '<section class="card hero"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
   vTodo(m,c)+
+  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Courses · enveloppe du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div>'+bar(c.coursesSpent,c.coursesPlanned)+'<div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div></section>'+
   '<div class="grid2">'+
-    (function(){var b=!col&&bank.bal;
-      return '<div class="kpi"><div class="l">Solde Fortuneo</div>'+(b?'<div class="v '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="s">'+(b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'')+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="v muted">—</div><div class="s">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</div>'})()+
     '<div class="kpi tap" role="button" data-act="tab" data-tab="fixes"><div class="l">Reste à payer</div><div class="v">'+fmt(c.fixedRemain)+'</div><div class="s">'+unpaid+' charge'+(unpaid>1?'s':'')+' non cochée'+(unpaid>1?'s':'')+'</div></div>'+
-    '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses du mois (courses + autres)</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
+    '<div class="kpi tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Autres dépenses</div><div class="v">'+fmt(c.otherExtras)+'</div><div class="s">hors courses</div></div>'+
   '</div>'+
   paf+
   '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
     '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div></section>'+
-  '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
-    '<div class="line" style="border:0"><span class="small muted">'+(c.coursesSpent>c.coursesPlanned?'Dépassement':'Reste')+'</span><span class="n small">'+fmt(c.coursesSpent)+' / '+fmt(c.coursesPlanned)+'</span></div></section>'+
   (gaps?'<section class="card"><h2>Écarts sur charges</h2>'+gaps+'</section>':'');
 }
 
