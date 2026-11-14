@@ -810,11 +810,11 @@ function vDep(m,c){
     return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
       '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
-  var envT=function(label,sp,pl,attr,aria,hint){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var envT=function(label,sp,pl,attr,aria,hint,rem){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(rem?pl-sp:sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     return '<div class="rtile envt"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div>'+
       '<label class="rs envin"><span>sur</span><input class="num" inputmode="decimal" '+attr+'="1" value="'+inp(pl)+'" aria-label="'+aria+'"><span>€</span></label>'+
-      '<div class="rs '+(over?'neg':'')+'">'+(over?'Dépassement '+fmt(sp-pl):'Reste '+fmt(pl-sp))+'</div>'+(hint?'<div class="rs">'+hint+'</div>':'')+'</div>'};
-  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','')+envT('Tickets resto',c.restoSpent,c.restoPlanned,'data-resto','Budget tickets resto','hors PAF')+'</div>'+
+      (rem&&!over?'':'<div class="rs '+(over?'neg':'')+'">'+(over?'Dépassement '+fmt(sp-pl):'Reste '+fmt(pl-sp))+'</div>')+(hint?'<div class="rs">'+hint+'</div>':'')+'</div>'};
+  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','')+envT('Ticket-resto',c.restoSpent,c.restoPlanned,'data-resto','Budget ticket-resto','hors PAF',1)+'</div>'+
     vLink(m)+vPick(m)+
     adOpen('dep','Ajouter une dépense')+'<form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
