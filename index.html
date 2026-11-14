@@ -290,6 +290,13 @@ input.num,.row input.num,input[name=amount]{min-height:34px;height:34px;padding:
 input.num:focus,input[name=amount]:focus{background:color-mix(in srgb,var(--ink) 10%,transparent);border-color:var(--accent)}
 .row{min-height:52px;padding:8px 0}
 .kp3{align-items:stretch}
+.form input:not([type=hidden]),.form select{height:40px;min-height:40px;padding:0 12px;border-radius:10px;font-size:16px;background:var(--bg);border:1px solid var(--line)}
+.form input[type=date]{padding:0 10px}
+.adh{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left;min-height:34px}
+.adh>span:first-child{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.adb{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.ad .adbody{margin-top:12px}.ad:not(.open) .adbody{display:none}
+.card.ad{padding-top:12px;padding-bottom:12px}.card.ad.open{padding-bottom:16px}
 </style>
 </head>
 <body>
@@ -379,6 +386,8 @@ function build(key){
 function tplEnd(t){return t.from&&t.months?shiftYm(t.from,t.months-1):null}
 function tplOn(t,key){return !t.from||(key>=t.from&&(!t.months||key<=tplEnd(t)))}
 var fxAdd=false;
+function adOpen(k,t,o){return '<section class="card ad'+(o?' open':'')+'"><button type="button" class="adh" data-ad="'+k+'" aria-expanded="'+(o?'true':'false')+'"><span>'+t+'</span><span class="adb" aria-hidden="true">'+(o?'×':'+')+'</span></button><div class="adbody">'}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-ad]');if(!b||b.disabled)return;var c=b.closest('.ad'),o=c.classList.toggle('open');b.setAttribute('aria-expanded',o?'true':'false');b.querySelector('.adb').textContent=o?'×':'+';if(o){var i=c.querySelector('input:not([type=hidden])');if(i)i.focus()}});
 function getM(key){return state.months[key]||virt[key]||(virt[key]=build(key))}
 function editM(key){
   if(!state.months[key]){state.months[key]=virt[key]||build(key);delete virt[key]}
@@ -641,11 +650,11 @@ function vRev(m,c){
       return '<section class="card"><h2>Revenus nets du mois</h2><div class="grid2">'+[0,1].map(function(i){return '<label class="small muted">'+esc(cn[i]||('Personne '+(i+1)))+'<input class="num" inputmode="decimal" data-minc="'+i+'" value="'+inp(mi[i])+'" style="margin-top:4px"></label>'}).join('')+'</div>'+
         '<div class="small muted" style="margin-top:10px">Répartition : '+esc(cn[0]||'')+' '+(c.S.p[0]*100).toFixed(1).replace('.',',')+' % · '+esc(cn[1]||'')+' '+(c.S.p[1]*100).toFixed(1).replace('.',',')+' %'+(ov?' · revenus modifiés pour ce mois':' · revenus du Modèle')+'</div>'+
         (ov?'<button class="btn" style="margin-top:10px" data-mi="reset">Revenir aux revenus du Modèle</button>':'')+'</section>'})()+
-    '<section class="card"><h2>Ajouter un revenu</h2><form class="form" data-form="add-credit">'+
+    adOpen('rev','Ajouter un revenu')+'<form class="form" data-form="add-credit">'+
       '<input type="text" name="label" placeholder="Libellé (ex. CAF)" required class="full" aria-label="Libellé">'+
       '<select name="who" aria-label="De la part de">'+opts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
-      '<button class="btn primary full" type="submit">Ajouter</button></form></section>';
+      '<button class="btn primary full" type="submit">Ajouter</button></form></div></section>';
 }
 
 function hval(r){return r.open?r.c.proj:r.c.balanceNow}
@@ -766,11 +775,11 @@ function vFix(m,c,xt){
   return '<section class="card"><div class="fxh"><div class="rwrap">'+ringSvg(fp,fk)+'<div class="rv">'+Math.round(fp)+'%</div></div><div class="stat"><div class="lbl2">'+(xt?'Extra du mois':'Charges fixes du mois')+'</div><div class="bigv">'+fmt(P1)+' <span class="muted">/ '+fmt(P0)+'</span></div><div class="small '+(unp?'muted':'pos')+'">'+(unp?unp+' à payer · reste '+fmt(P2):(pool.length?'Tout est payé':'Rien ce mois-ci'))+'</div></div></div>'+
     '<p class="small muted" style="margin:12px 0 0">Coche = payé · le montant est modifiable</p>'+carNote+'</section>'+
     (html||'<div class="empty card">'+(xt?'Aucun extra ce mois-ci.':'Aucune charge fixe. Ajoute-en dans l’onglet Modèle.')+'</div>')+(xt?
-    '<section class="card"><h2>Ajouter un extra</h2><p class="small muted" style="margin:0 0 10px">Charge ponctuelle (chèque, cadeau…). Elle compte dans la base des PAF.</p><form class="form" data-form="add-fixed">'+
+    adOpen('xtra','Ajouter un extra')+'<p class="small muted" style="margin:0 0 10px">Charge ponctuelle (chèque, cadeau…). Elle compte dans la base des PAF.</p><form class="form" data-form="add-fixed">'+
       '<input type="hidden" name="group" value="Extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></section>':(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
+      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>':(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
@@ -796,12 +805,12 @@ function vDep(m,c){
     '<span class="n small">'+fmt(c.restoSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Budget tickets resto"></span></div>'+
     '<div class="small '+(c.restoSpent>c.restoPlanned?'neg':'muted')+'">'+(c.restoSpent>c.restoPlanned?'Dépassement de '+fmt(c.restoSpent-c.restoPlanned):'Reste '+fmt(c.restoPlanned-c.restoSpent))+' · catégorie « Ticket resto » dans le formulaire ci-dessous</div></section>'+
     vLink(m)+vPick(m)+
-    '<section class="card"><h2>Ajouter une dépense</h2><form class="form" data-form="add-extra">'+
+    adOpen('dep','Ajouter une dépense')+'<form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
       '<select name="cat" aria-label="Catégorie">'+copts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
-      '<button class="btn primary full" type="submit">Ajouter</button></form></section>'+
+      '<button class="btn primary full" type="submit">Ajouter</button></form></div></section>'+
     '<section class="card"><h2>Dépenses du mois · '+fmt(c.extrasTotal)+(c.restoSpent?' <span class="muted" style="font-weight:400">+ '+fmt(c.restoSpent)+' resto</span>':'')+'</h2>'+(list||'<div class="empty">Aucune dépense hors charges.</div>')+'</section>';
 }
 
@@ -1191,13 +1200,13 @@ function vNous(m,c){
   var today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
   var sel=function(nm,opts,v){return '<select name="'+nm+'" aria-label="'+nm+'">'+opts.map(function(k){return '<option value="'+k+'"'+(k===v?' selected':'')+'>'+esc(nsName(k))+'</option>'}).join('')+'</select>'};
   var list='<section class="card"><h2>Frais à rembourser · '+esc(ymLabel(ym))+'</h2><p class="small muted" style="margin:0 0 6px">Coche = réglé. Une ligne non cochée est reportée automatiquement sur le mois suivant.</p>'+(rows||'<div class="empty">Rien à régler ce mois-ci.</div>')+'</section>';
-  var form='<section class="card"><h2>Ajouter une avance</h2>'+(nsErr?'<div class="note bad">'+esc(nsErr)+'</div>':'')+'<form class="form" data-form="ns-add">'+
+  var form=adOpen('ns','Ajouter une avance',!!nsErr)+(nsErr?'<div class="note bad">'+esc(nsErr)+'</div>':'')+'<form class="form" data-form="ns-add">'+
     '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required class="full" aria-label="Libellé">'+
     '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
     '<input type="date" name="date" value="'+def+'" aria-label="Date">'+
     '<label class="small muted" style="display:block">Avancé par'+sel('by',['h','l'],'h')+'</label>'+
     '<label class="small muted" style="display:block">À rembourser par'+sel('owe',['l','h','b'],'l')+'</label>'+
-    '<button class="btn primary add" type="submit">Ajouter</button></form></section>';
+    '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
   var pots=state.config.fixed.filter(function(t){return t.group==='Famille'&&!/karama|delphin/i.test(t.label)}).map(function(t){
     var paid={},adj=(N.pots[t.id]||[]).slice(),adjm={};
     Object.keys(state.months).forEach(function(k){(state.months[k].fixed||[]).forEach(function(x){if(x.tid===t.id&&x.paid)paid[k]=(paid[k]||0)+num(x.actual)})});
