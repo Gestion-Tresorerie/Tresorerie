@@ -629,8 +629,8 @@ document.addEventListener('submit',function(e){
 /* ---- Rapprochement bancaire ---- */
 function bkNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()}
 var BK_FIX=[['tel-enfant',/TELEPHONE|TEL RAF|RAFAELLE.*BOUYGUES|BOUYGUES.*RAFAELLE/],['internet',/BOUYGUES|INTERNET|BBOX/],['loyer',/BL0945895|NEXITY|LOYER/],['credit-regroupe',/CA CONSUMER|CONSUMER FINANCE|CREDIT REGROUPE/],['leasing',/VOLKSWAGEN/],['ass-tcross',/TCROSS|T-CROSS|T CROSS/],['ass-bmw',/\bAXA\b/],['ass-hab',/ACHEEL/],['elec',/TOTAL ?ENERGIES|ELECTRICITE/],['cantine',/DDFIP|PRESTO|\bSGC\b|REST\.? ?SCOLAIRE|ALSH|CANTINE/],['musique',/CONSERVATOIRE|HECTOR/],['tresorerie',/SAKAFO|DADA|TRESO/]];
-var BK_CAT=[['Courses',/SODISCA|AUCHAN|LIDL|CARREFOUR|SUPER U|MONOPRIX|ALDI|INTERMARCHE|GRAND FRAIS|CASINO|BOULANGERIE|MARCHE|COURSES|PARIS STORE|FRANPRIX|BIOCOOP|SOLIBE/],['Santé',/PHARM|DOCTEUR|\bDR\b|ORTHO|CLINIQUE|OPHTAL|DOCTOLIB|RADIO|NOVEOC|CPAM|MEDECIN|LABORATOIRE/],['Transport',/\bTAM\b|VOIRIE|STATIONNEMENT|PARK|PEAGE|CARBURANT|STATION|SNCF|UBER/],['Enfants & école',/ECOLE|COLLEGE|PHOTO|SCOLAIRE/],['Loisirs',/RESTAU|CINE|AMIKADO|NETFLIX|SPOTIFY|BETM|ACTION|FNAC|AMAZON|KAYAK/]];
-var BK_PART={loyer:1},BK_BACK={cantine:1};
+var BK_CAT=[['Courses',/SODISCA|AUCHAN|LIDL|CARREFOUR|SUPER U|MONOPRIX|ALDI|INTERMARCHE|GRAND FRAIS|CASINO|BOULANGERIE|MARCHE|COURSES|PARIS STORE|FRANPRIX|BIOCOOP|SOLIBE/],['Santé',/PHARM|DOCTEUR|\bDR\b|ORTHO|CLINIQUE|OPHTAL|DOCTOLIB|RADIO|NOVEOC|CPAM|MEDECIN|LABORATOIRE/],['Transport',/\bTAM\b|VOIRIE|STATIONNEMENT|PARK|PEAGE|CARBURANT|STATION|SNCF|UBER/],['Enfants & école',/ECOLE|COLLEGE|PHOTO|SCOLAIRE/],['Loisirs',/RESTAU|CINE|AMIKADO|NETFLIX|SPOTIFY|BETM|ACTION|FNAC|AMAZON|KAYAK|CHINA|WOK|PIZZ|KEBAB|BURGER|MCDO|SUSHI|TACOS|PRIMARK|KIABI|DECATHLON/]];
+var BK_PART={loyer:1},BK_BACK={};
 var BK_MONTHS={JANV:1,JANVIER:1,FEV:2,FEVR:2,FEVRIER:2,MARS:3,AVR:4,AVRIL:4,MAI:5,JUIN:6,JUIL:7,JUILLET:7,AOUT:8,SEPT:9,SEPTEMBRE:9,OCT:10,OCTT:10,OCTOBRE:10,NOV:11,NOVEMBRE:11,DEC:12,DECEMBRE:12};
 function bkMonthKey(t){
   var d=t.date||'',base=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(base))return null;
@@ -662,6 +662,13 @@ function bankSync(){
     if(ex&&ex.bankSeen&&ex.bankSeen[t.id])return;
     var m=editM(key);m.bankSeen=m.bankSeen||{};m.bankSeen[t.id]=1;touched[key]=1;
     var c=bkClassify(t),amt=Math.abs(t.amount),done=false,i;
+    if(t.amount<0&&/FORTUNEO/.test(bkNorm(t.label))&&/RASOL/.test(bkNorm(t.label))){
+      var rdone=false,ra=m.fixed.filter(function(x){return !x.paid&&(x.tid==='internet'||x.tid==='tel-enfant')}),hit=[];
+      ra.forEach(function(x){if(!hit.length&&Math.abs(x.planned-amt)<0.015)hit=[x]});
+      if(!hit.length&&ra.length===2&&Math.abs(ra[0].planned+ra[1].planned-amt)<0.015)hit=ra;
+      if(hit.length){hit.forEach(function(x){x.paid=true;x.actual=x.planned;x.bank=true;s.ticked++});rdone=true}
+    }
+    if(rdone)return;
     if(c.k==='fixed'){
       var ord=BK_BACK[c.tid]?Object.keys(state.months).filter(function(k){return k>='2026-10'&&k<=key}).sort():[key],tg=null,oi,mm;
       for(oi=0;oi<ord.length&&!tg;oi++){mm=(ord[oi]===key)?m:editM(ord[oi]);for(i=0;i<mm.fixed.length;i++)if(mm.fixed[i].tid===c.tid&&!mm.fixed[i].paid){tg=mm.fixed[i];touched[ord[oi]]=1;break}}
@@ -788,12 +795,14 @@ document.addEventListener('submit',function(e){
   else if(k==='cfg-credit'){state.config.credits.push({id:uid(),label:label,who:fd.get('who'),amount:amount});commitCfg()}
 });
 
-function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='1')return;
-  Object.keys(state.months).forEach(function(k){var m=state.months[k],add=[];if(!m||!m.fixed)return;
+function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='2')return;
+  Object.keys(state.months).forEach(function(k){var m=state.months[k],add=[],ch=false;if(!m||!m.fixed)return;
     m.fixed.forEach(function(x){if(x.tid==='loyer'&&x.bank&&x.paid&&x.planned-x.actual>0.5){var r=Math.round((x.planned-x.actual)*100)/100;add.push({id:uid(),tid:'loyer',label:x.label+' (solde)',group:x.group,planned:r,actual:r,paid:false});x.planned=x.actual}});
-    if(k==='2026-10'&&!m.fixed.some(function(x){return x.tid==='cantine'||/cantine/i.test(x.label||'')}))add.push({id:uid(),tid:'cantine',label:'Cantine + accueil primaire',group:'Enfants & école',planned:209.22,actual:209.22,paid:false});
-    if(add.length){m.fixed=m.fixed.concat(add);touch('m-'+k)}});
-  localStorage.setItem('budget-fix-v','1');persistLocal()}catch(e){}}
+    if(k==='2026-10'){var n0=m.fixed.length;m.fixed=m.fixed.filter(function(x){return !(x.tid==='cantine'&&!x.paid)});if(m.fixed.length!==n0)ch=true}
+    (m.extras||[]).forEach(function(e){if(e.bankId&&e.cat==='Autre'){var c=bkClassify({amount:-1,label:e.label,date:(e.date||k+'-01')});if(c.k==='extra'&&c.cat!=='Autre'){e.cat=c.cat;ch=true}}});
+    if(add.length){m.fixed=m.fixed.concat(add);ch=true}
+    if(ch)touch('m-'+k)});
+  localStorage.setItem('budget-fix-v','2');persistLocal()}catch(e){}}
 loadLocal();applySeed();applyModel();bankFix1();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
