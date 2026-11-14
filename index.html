@@ -464,8 +464,7 @@ function vSynth(m,c){
     return '<section class="card hero"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
   vTodo(m,c)+
   '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Courses · enveloppe du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div>'+bar(c.coursesSpent,c.coursesPlanned)+'<div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div></section>'+
-  '<div class="grid2">'+
-    '<div class="kpi tap" role="button" data-act="tab" data-tab="fixes"><div class="l">Reste à payer</div><div class="v">'+fmt(c.fixedRemain)+'</div><div class="s">'+unpaid+' charge'+(unpaid>1?'s':'')+' non cochée'+(unpaid>1?'s':'')+'</div></div>'+
+  '<div class="grid2" style="grid-template-columns:1fr">'+
     '<div class="kpi tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Autres dépenses</div><div class="v">'+fmt(c.otherExtras)+'</div><div class="s">hors courses</div></div>'+
   '</div>'+
   paf+
