@@ -298,6 +298,10 @@ input.num:focus,input[name=amount]:focus{background:color-mix(in srgb,var(--ink)
 .ad .adbody{margin-top:12px}.ad:not(.open) .adbody{display:none}
 .card.ad{padding-top:12px;padding-bottom:12px}.card.ad.open{padding-bottom:16px}
 .adin{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.rings.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.envt{cursor:default;padding:14px 8px 12px}
+.envin{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:6px}
+.envin input.num{width:88px;min-height:32px;height:32px;padding:0 8px;font-size:15px}
 </style>
 </head>
 <body>
@@ -799,13 +803,11 @@ function vDep(m,c){
     return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
       '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
-  return '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
-    '<div class="line" style="border:0"><span class="small muted">Dépensé / enveloppe du mois</span>'+
-    '<span class="n small">'+fmt(c.coursesSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-courses="1" value="'+inp(c.coursesPlanned)+'" aria-label="Enveloppe courses"></span></div>'+
-    '</section><section class="card"><h2>Enveloppe tickets resto</h2>'+bar(c.restoSpent,c.restoPlanned)+
-    '<div class="line" style="border:0"><span class="small muted">Dépensé / budget du mois <span class="muted">(hors PAF, hors compte)</span></span>'+
-    '<span class="n small">'+fmt(c.restoSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Budget tickets resto"></span></div>'+
-    '<div class="small '+(c.restoSpent>c.restoPlanned?'neg':'muted')+'">'+(c.restoSpent>c.restoPlanned?'Dépassement de '+fmt(c.restoSpent-c.restoPlanned):'Reste '+fmt(c.restoPlanned-c.restoSpent))+' · catégorie « Ticket resto » dans le formulaire ci-dessous</div></section>'+
+  var envT=function(label,sp,pl,attr,aria,hint){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return '<div class="rtile envt"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div>'+
+      '<label class="rs envin"><span>sur</span><input class="num" inputmode="decimal" '+attr+'="1" value="'+inp(pl)+'" aria-label="'+aria+'"><span>€</span></label>'+
+      '<div class="rs '+(over?'neg':'')+'">'+(over?'Dépassement '+fmt(sp-pl):'Reste '+fmt(pl-sp))+'</div>'+(hint?'<div class="rs">'+hint+'</div>':'')+'</div>'};
+  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','')+envT('Tickets resto',c.restoSpent,c.restoPlanned,'data-resto','Budget tickets resto','hors PAF')+'</div>'+
     vLink(m)+vPick(m)+
     adOpen('dep','Ajouter une dépense')+'<form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
