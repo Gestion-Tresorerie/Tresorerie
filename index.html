@@ -493,7 +493,7 @@ function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
   var dd=docFor(id);if(dd)dd._ts=Date.now();
   persistLocal();
-  if(!col){paintStatus();return}
+  if(!col){paintStatus();schedSync();return}
   dirty[id]=true; clearTimeout(timers[id]);
   setStatus('saving');
   timers[id]=setTimeout(function(){flush(id)},600);
@@ -1152,6 +1152,9 @@ function bankSync(){
 }
 
 var sy={busy:false,err:'',ok:false},SYM='budget-sync-meta';
+var syT=null,syLast=0;
+function schedSync(){if(!bank.token)return;clearTimeout(syT);syT=setTimeout(function(){if(sy.busy){schedSync();return}doSync(true)},2500)}
+function typing(){var a=document.activeElement;return !!(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))}
 function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e){return {}}}
 function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
 function syncPending(){var m=syMeta();return syIds().some(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)})}
@@ -1182,7 +1185,7 @@ function doSync(silent){
       if(rt>lt){syAdopt(id,r.data);meta[id]=rt;return}
       push[id]={ts:lt,data:l};
     });
-    var done=function(){try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();sy.busy=false;sy.ok=true;render()};
+    var done=function(){try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();sy.busy=false;sy.ok=true;syLast=Date.now();if(silent&&typing())paintStatus();else render()};
     if(!Object.keys(push).length){done();return}
     return bankCall('/sync',{method:'POST',body:JSON.stringify({docs:push})}).then(function(y){
       if(!y.ok)throw new Error('post');
@@ -1423,7 +1426,7 @@ function migModel(){
 loadLocal();applySeed();applyModel();bankFix1();applyInc();migModel();try{nsSync()}catch(e){}
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
-if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500)}
+if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-syLast>10000&&!sy.busy)doSync(true)});setInterval(function(){if(document.visibilityState==='visible'&&!sy.busy&&!typing()&&Date.now()-syLast>45000)doSync(true)},30000)}
 initDb();
 })();
 </script>
