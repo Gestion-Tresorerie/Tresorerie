@@ -273,6 +273,9 @@ input.num{font-size:16px;padding:11px 10px}
 .syn .chip.seg{font-size:13px;padding:6px 12px}
 .grid2>*{min-width:0}
 .grid2 input{width:100%;min-width:0}
+.ro [data-ed],.ro [data-lk],.ro [data-fx],.ro [data-bs],.ro [data-act="del"]{pointer-events:none}
+.ro input:disabled,.ro select:disabled{opacity:.8;-webkit-text-fill-color:currentColor}
+.ro .btn:disabled,.ro .x:disabled{opacity:.4}
 </style>
 </head>
 <body>
@@ -309,7 +312,9 @@ var num=function(v){var n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'
 var inp=function(v){return String(Math.round((v||0)*100)/100).replace('.',',')};
 var uid=function(){return Math.random().toString(36).slice(2,9)};
 var MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-var GROUPS=['Logement','Crédits & leasing','Assurances','Énergie & télécom','Enfants & école','Famille','Divers'];
+var GROUPS=['Logement','Voiture','Énergie & télécom','Enfants & école','Famille','Ponctuel'];
+var GMAP={loyer:'Logement','ass-hab':'Logement','credit-regroupe':'Voiture',leasing:'Voiture','ass-tcross':'Voiture','ass-bmw':'Voiture','caf-dette':'Ponctuel'};
+function ngrp(g,tid){if(tid&&GMAP[tid])return GMAP[tid];if(g==='Divers'||g==='Assurances'||g==='Crédits & leasing')return 'Ponctuel';return g}
 var RESTO='Ticket resto';
 var CATS=['Courses','Ticket resto','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
 var STATUS={
@@ -475,6 +480,7 @@ function applySnap(snap){
     if(id==='config'){state.config=normCfg(d);resetVirt()}
     else if(id.indexOf('m-')===0){var k=id.slice(2);state.months[k]=normMonth(d,k);delete virt[k]}
   });
+  if(typeof migModel==='function')migModel();
   persistLocal();
 }
 function initDb(){
@@ -957,7 +963,7 @@ document.addEventListener('click',function(e){
   else if(a==='close'){fx.id=null;render()}
   else if(a==='addtog'){fxAdd=!fxAdd;render()}
   else if(a==='tofix'||a==='toxtra'){var mq=editM(ym),xq=findBy(mq.fixed,t.dataset.id);if(!xq)return;
-    if(a==='tofix'){xq.xtra=false;if(GROUPS.indexOf(xq.group)<0)xq.group='Divers'}else{xq.xtra=true;xq.group='Extra'}
+    if(a==='tofix'){xq.xtra=false;if(GROUPS.indexOf(xq.group)<0)xq.group='Ponctuel'}else{xq.xtra=true;xq.group='Extra'}
     fx.id=null;commitM()}
   else if(a==='undo'){var u=editM(ym),ux=findBy(u.fixed,t.dataset.id);if(!ux||!ux.bankId)return;var bid=ux.bankId,bt=ux.btx;
     ux.paid=false;ux.actual=ux.planned;ux.bank=false;delete ux.bankId;delete ux.btx;
@@ -1157,6 +1163,10 @@ function render(){
   var keepFocus=null;
   var nowT=Date.now(),an=nowT-(anLast[state.tab]||0)>5000;anLast[state.tab]=nowT;
   $('#view').innerHTML='<div class="syn'+(an?' an':'')+'" style="display:contents">'+f(m,c)+'</div>';
+  var vw=$('#view'),ro=ym<CUR&&['revenus','fixes','extra','depenses'].indexOf(state.tab)>=0;
+  vw.classList.toggle('ro',ro);
+  if(ro){var sy2=vw.firstChild;sy2.insertAdjacentHTML('afterbegin','<div class="note">🔒 Mois clos : lecture seule.</div>');
+    vw.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=true})}
 }
 
 /* ---------- événements ---------- */
@@ -1269,7 +1279,19 @@ function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='2')return;
     if(ch)touch('m-'+k)});
   localStorage.setItem('budget-fix-v','2');persistLocal()}catch(e){}}
 function applyInc(){try{if(localStorage.getItem('budget-inc-v')==='1')return;var i=state.config.incomes;if(i&&Math.abs(num(i[0])-3322.64)<0.005){i[0]=3245.5;persistLocal();touch('config')}localStorage.setItem('budget-inc-v','1')}catch(e){}}
-loadLocal();applySeed();applyModel();bankFix1();applyInc();
+function migModel(){
+  var cfg=state.config,ch=false;
+  cfg.fixed.forEach(function(t){var g=ngrp(t.group,t.id);if(g!==t.group){t.group=g;ch=true}});
+  if(ch)touch('config');
+  Object.keys(state.months).forEach(function(k){
+    var m=state.months[k],c2=false;if(!m||!m.fixed)return;
+    m.fixed.forEach(function(x){if(x.group==='Extra')return;var g=ngrp(x.group,x.tid);if(g!==x.group){x.group=g;c2=true}});
+    if(k>='2026-12'){var del=m.del||[];cfg.fixed.forEach(function(tp){
+      if(!tplOn(tp,k)||m.fixed.some(function(y){return y.tid===tp.id})||del.indexOf(tp.id+'|'+tp.label)>=0)return;
+      m.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false});c2=true})}
+    if(c2)touch('m-'+k)});
+}
+loadLocal();applySeed();applyModel();bankFix1();applyInc();migModel();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
 if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500)}
