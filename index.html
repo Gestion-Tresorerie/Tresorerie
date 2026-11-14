@@ -278,7 +278,7 @@ function loadLocal(){
     if(o.months)Object.keys(o.months).forEach(function(k){state.months[k]=normMonth(o.months[k],k)});
   }catch(e){}
 }
-function applySeed(){try{var s=window.BUDGET_SEED,add=0;if(!s)return;Object.keys(s).forEach(function(ym){if(!state.months[ym]){state.months[ym]=normMonth(JSON.parse(JSON.stringify(s[ym])),ym);add++}});if(add)persistLocal()}catch(e){}}
+function applySeed(){try{var s=window.BUDGET_SEED;if(!s)return;var V=window.BUDGET_SEED_V||1,cur=+(localStorage.getItem('budget-seed-v')||0),n=0;Object.keys(s).forEach(function(ym){if(state.months[ym]&&cur>=V)return;var q=s[ym],i=0;function id(){return 's'+ym.replace('-','')+(++i)}state.months[ym]={ym:ym,courses:{planned:500},imported:true,credits:q.cr.map(function(c){return {id:id(),label:c[0],who:c[1],planned:c[2],actual:c[2],done:true,kind:null}}),fixed:q.fx.map(function(f){return {id:id(),label:f[0],group:f[1],planned:f[2],actual:f[2],paid:true}}),extras:q.ex.map(function(e){return {id:id(),label:e[0],cat:e[1],amount:e[2],date:ym+'-'+e[3]}})};n++});if(n){localStorage.setItem('budget-seed-v',String(V));persistLocal()}}catch(e){}}
 function docFor(id){return id==='config'?state.config:state.months[id.slice(2)]}
 function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
