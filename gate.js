@@ -1,6 +1,6 @@
 /* Écran d'accès : verrou léger côté navigateur (dissuasion, pas une sécurité forte). */
 (function(){
-  var H='a1c269b92f612ae91662940a6b6b8f21ca35917a573b36476db1661be6cc1125',S='a94315deb41d53604759a1001ae527cc',IT=310000,KEY='budget-gate-ok';
+  var H='8645b9a2983215cea50f38117fa3bb086bdf7294c8ee51750ee7a719a446e431',S='9b71cde162de1a1cb1ed0e78b11a36eb',IT=310000,KEY='budget-gate-ok';
   if(!/\.github\.io$/.test(location.hostname))return;
   function hex(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return ('0'+x.toString(16)).slice(-2)}).join('')}
   function derive(code){
@@ -32,7 +32,7 @@
     inp.focus();
     f.addEventListener('submit',function(e){
       e.preventDefault();
-      var v=inp.value.trim().toLowerCase();if(!v)return;
+      var v=inp.value.trim();if(!v)return;
       btn.disabled=true;err.textContent='';
       derive(v).then(function(h){
         if(h===H){try{localStorage.setItem(KEY,H)}catch(x){}
