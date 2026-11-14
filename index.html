@@ -790,9 +790,11 @@ function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e
 function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
 function syncPending(){var m=syMeta();return syIds().some(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)})}
 function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
-function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1];
-  ['fixed','credits','extras'].forEach(function(l){var have={};(r[l]||[]).forEach(function(x){have[syKey(x,l)]=1});
-    (o[l]||[]).forEach(function(x){if(!have[syKey(x,l)]){r[l]=r[l]||[];r[l].push(clone(x))}})});
+function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
+  (a.del||[]).concat(b.del||[]).forEach(function(k){dead[k]=1});
+  ['fixed','credits','extras'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
+    (o[l]||[]).forEach(function(x){var k=syKey(x,l);if(!have[k]&&!dead[k])r[l].push(clone(x))})});
+  r.del=Object.keys(dead).slice(-300);
   r.bankSeen=Object.assign({},o.bankSeen||{},r.bankSeen||{});return r}
 function syAdopt(id,data){if(id==='config')state.config=normCfg(data);else state.months[id.slice(2)]=normMonth(data,id.slice(2))}
 function syFail(){sy.busy=false;sy.err='1';paintStatus()}
@@ -847,6 +849,7 @@ document.addEventListener('click',function(e){
   else if(a==='tab'){state.tab=t.dataset.tab;render();window.scrollTo(0,0)}
   else if(a==='del'){
     var mk=t.dataset.from||ym,m=editM(mk),l=t.dataset.list;
+    var gone=m[l].filter(function(x){return x.id===t.dataset.id})[0];if(gone)m.del=(m.del||[]).concat([syKey(gone,l)]).slice(-300);
     m[l]=m[l].filter(function(x){return x.id!==t.dataset.id}); touch('m-'+mk); render();
   }
   else if(a==='cfgdel'){
@@ -858,6 +861,7 @@ document.addEventListener('click',function(e){
     var hc=have(m2.credits),hf=have(m2.fixed);
     c.credits.forEach(function(tp){if(!hc[tp.id])m2.credits.push({id:uid(),tid:tp.id,label:tp.label,who:tp.who,planned:tp.amount||0,actual:tp.kind?null:tp.amount,done:false,kind:tp.kind||null})});
     c.fixed.forEach(function(tp){if(!hf[tp.id])m2.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false})});
+    m2.del=(m2.del||[]).filter(function(k){return !c.fixed.concat(c.credits).some(function(tp){return k===tp.id+'|'+tp.label})});
     commitM(); state.tab='fixes'; render();
   }
   else if(a==='copybk'){
