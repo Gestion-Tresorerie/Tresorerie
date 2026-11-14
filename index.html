@@ -578,6 +578,15 @@ function vLink(m){
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn primary" data-lk="ok"'+(ids.length?'':' disabled')+'>Valider le rapprochement</button><button class="btn" data-lk="cancel">Annuler</button></div></section>'}
   else h+='<button class="btn" data-lk="cancel">Annuler</button>';
   return h}
+function fxCands(m,x){
+  return (bank.tx||[]).filter(function(t){return t.id&&!t.pending&&t.amount<0&&bkMonthKey(t)===ym&&!bsGrp(t).length&&!bsFixed(t,m)})
+    .sort(function(a,b){var da=Math.abs(Math.abs(a.amount)-x.planned),db=Math.abs(Math.abs(b.amount)-x.planned);return da-db||(a.date<b.date?1:-1)})}
+function fxSheet(x,m){
+  var L=fxCands(m,x);
+  return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px"><div class="small muted" style="margin-bottom:6px">Choisis l’opération Fortuneo qui correspond à « '+esc(x.label)+' » ('+fmt(x.planned)+')</div>'+
+    (L.length?L.map(function(t){var ex=Math.abs(Math.abs(t.amount)-x.planned)<0.015;
+      return '<div class="todo tap" role="button" data-fx="link" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+(ex?' ✓':'')+'</b><small class="muted">'+esc(t.date||'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération disponible ce mois-ci.</div>')+
+    '<button class="btn" style="margin-top:8px" data-fx="close">Fermer</button></div>'}
 function vFix(m,c){
   var groups=GROUPS.slice(); m.fixed.forEach(function(x){if(groups.indexOf(x.group)<0)groups.push(x.group)});
   var html=groups.map(function(g){
@@ -589,9 +598,9 @@ function vFix(m,c){
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque</small>':'')+'</div>'+
+        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque</small>':'')+(!col&&bank.token&&bank.tx&&!fr?(x.bankId&&x.btx?'<button class="btn" style="padding:2px 10px;margin-top:6px" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn" style="padding:2px 10px;margin-top:6px" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div>'+
         '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
-        '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>';
+        '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>'+(fx.id===x.id?fxSheet(x,m):'');
       }).join('')+'</section>';
   }).join('');
   var gopts=GROUPS.map(function(g){return '<option>'+esc(g)+'</option>'}).join('');
@@ -712,10 +721,10 @@ function bkClean(l){var s=String(l||'');
 function bkTitle(t){var c=bkClassify(t);
   if(c.k==='fixed'){var f=state.config.fixed.filter(function(x){return x.id===c.tid})[0];return f?f.label:bkClean(t.label)}
   if(c.k==='paf')return 'PAF '+c.who;return bkClean(t.label)}
-var bs={id:null,pick:false},ed={id:null};
+var bs={id:null,pick:false},ed={id:null},fx={id:null};
 function bsExtra(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.bankId===t.id})[0]||null:null}
 function bsGrp(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.grp===t.id}):[]}
-function bsFixed(t,m){var c=bkClassify(t),amt=Math.abs(t.amount);if(c.k!=='fixed')return null;
+function bsFixed(t,m){var lk0=m.fixed.filter(function(x){return x.bankId===t.id})[0];if(lk0)return lk0;var c=bkClassify(t),amt=Math.abs(t.amount);if(c.k!=='fixed')return null;
   return m.fixed.filter(function(x){return x.tid===c.tid&&x.paid&&x.bank&&Math.abs(x.actual-amt)<0.015})[0]||null}
 function bsSheet(t){
   var mk=bkMonthKey(t),ex=bsExtra(t),g=bsGrp(t),m=mk?getV(mk):null,fx=m&&t.amount<0&&!ex&&!g.length?bsFixed(t,m):null,h;
@@ -789,6 +798,22 @@ function vBank(){
   return h;
 }
 document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-fx]');if(!t)return;var a=t.dataset.fx;
+  if(a==='open'){fx.id=(fx.id===t.dataset.id)?null:t.dataset.id;render()}
+  else if(a==='close'){fx.id=null;render()}
+  else if(a==='undo'){var u=editM(ym),ux=findBy(u.fixed,t.dataset.id);if(!ux||!ux.bankId)return;var bid=ux.bankId,bt=ux.btx;
+    ux.paid=false;ux.actual=ux.planned;ux.bank=false;delete ux.bankId;delete ux.btx;
+    if(bt&&bt.e&&!u.extras.some(function(y){return y.bankId===bid}))u.extras.push({id:uid(),label:bt.e.label,cat:bt.e.cat,amount:bt.a,date:bt.d,bankId:bid});
+    if(bt&&bt.e)u.del=(u.del||[]).filter(function(k){return k!=='b'+bid});
+    commitM()}
+  else if(a==='link'){
+    var m=editM(ym),x=findBy(m.fixed,fx.id),tx=(bank.tx||[]).filter(function(y){return y.id===t.dataset.id})[0];if(!x||!tx)return;
+    var amt=Math.abs(tx.amount),ex=m.extras.filter(function(y){return y.bankId===tx.id})[0];
+    x.paid=true;x.actual=amt;x.bank=true;x.bankId=tx.id;x.btx={l:tx.label,a:amt,d:tx.date,e:ex?{label:ex.label,cat:ex.cat}:null};
+    if(ex){m.del=(m.del||[]).concat([syKey(ex,'extras')]).slice(-300);m.extras=m.extras.filter(function(y){return y.id!==ex.id})}
+    m.bankSeen=m.bankSeen||{};m.bankSeen[tx.id]=1;fx.id=null;commitM()}
+});
+document.addEventListener('click',function(e){
   var t=e.target.closest('[data-ed]');if(!t||e.target.closest('[data-act],[data-lk]'))return;var a=t.dataset.ed;
   if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;render()}
   else if(a==='close'){ed.id=null;render()}
@@ -809,7 +834,7 @@ document.addEventListener('click',function(e){
     var lab=String(($('#bs-label')&&$('#bs-label').value)||'').trim()||bkClean(tx.label),cat=($('#bs-cat')&&$('#bs-cat').value)||'Autre';
     var ex=mm.extras.filter(function(y){return y.bankId===tx.id})[0];
     if(ex){ex.label=lab.slice(0,48);ex.cat=cat}
-    else{var fx=bsFixed(tx,mm);if(fx){fx.paid=false;fx.bank=false;fx.actual=fx.planned}
+    else{var fx=bsFixed(tx,mm);if(fx){fx.paid=false;fx.bank=false;fx.actual=fx.planned;delete fx.bankId;delete fx.btx}
       ex={id:uid(),label:lab.slice(0,48),cat:cat,amount:Math.abs(tx.amount),date:tx.date,bankId:tx.id};mm.extras.push(ex)}
     touch('m-'+key);bs.id=null;
     if(a==='link'){ym=key;lk={on:true,tx:ex.id,sel:{}};var pk=lkPick(getV(key),ex.amount);(pk||[]).forEach(function(id){lk.sel[id]=1});state.tab='depenses';render();window.scrollTo(0,0)}
