@@ -246,7 +246,7 @@ var LS='budget-foyer-v1';
 var NOTES={'internet':'Avancé par Hasina · payé au virement','tel-enfant':'Avancé par Hasina · payé au virement'};
 var d0=new Date();
 var ym=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');
-var state={config:{contributors:['Hasina','Linda'],courses:500,resto:60,fixed:[],credits:[],incomes:[3322.64,1550],firstPayment:1700,salaryFirst:2500},months:{},tab:'synthese',status:'loading'};
+var state={config:{contributors:['Hasina','Linda'],courses:500,resto:60,fixed:[],credits:[],incomes:[3245.5,1550],firstPayment:1700,salaryFirst:2500},months:{},tab:'synthese',status:'loading'};
 var virt={}; var col=null;
 var timers={},busy={},dirty={};
 
@@ -258,7 +258,7 @@ function normCfg(d){
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
     courses:typeof c.courses==='number'?c.courses:500, resto:typeof c.resto==='number'?c.resto:60,
     fixed:Array.isArray(c.fixed)?c.fixed:[], credits:Array.isArray(c.credits)?c.credits:[],
-    incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3322.64,1550],
+    incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3245.5,1550],
     firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500,_ts:typeof c._ts==='number'?c._ts:0};
 }
 function normMonth(d,key){
@@ -357,7 +357,7 @@ function loadLocal(){
   }catch(e){}
 }
 function applySeed(){try{var s=window.BUDGET_SEED;if(!s)return;var V=window.BUDGET_SEED_V||1,cur=+(localStorage.getItem('budget-seed-v')||0),n=0;Object.keys(s).forEach(function(ym){if(state.months[ym]&&cur>=V)return;var q=s[ym],i=0;function id(){return 's'+ym.replace('-','')+(++i)}state.months[ym]={ym:ym,courses:{planned:500},imported:true,credits:q.cr.map(function(c){return {id:id(),label:c[0],who:c[1],planned:c[2],actual:c[2],done:true,kind:null}}),fixed:q.fx.map(function(f){return {id:id(),label:f[0],group:f[1],planned:f[2],actual:f[2],paid:true}}),extras:q.ex.map(function(e){return {id:id(),label:e[0],cat:e[1],amount:e[2],date:ym+'-'+e[3]}})};n++});if(n){if(state.config.firstPayment===2000)state.config.firstPayment=1700;localStorage.setItem('budget-seed-v',String(V));persistLocal()}}catch(e){}}
-function applyModel(){try{if(localStorage.getItem('budget-model-v')==='2')return;var F=[['loyer','Loyer','Logement',1461.72],['credit-regroupe','Crédit regroupé (Sofinco)','Crédits & leasing',715.86],['leasing','Leasing T-Cross','Crédits & leasing',298.27],['caf-dette','Compensation dette CAF','Crédits & leasing',110],['ass-tcross','Assurance T-Cross','Assurances',138],['ass-bmw','Assurance BMW','Assurances',102.77],['ass-hab','Assurance habitation','Assurances',14.59],['elec','Électricité','Énergie & télécom',150],['internet','Internet (Bouygues)','Énergie & télécom',36.99],['tel-enfant','Téléphone Rafaelle','Énergie & télécom',23.98],['cantine','Cantine + accueil primaire','Enfants & école',209.22],['demi-pension','Collège demi-pension','Enfants & école',76.66],['musique','Musique enfant','Enfants & école',120],['tresorerie','Trésorerie famille (Sakafo)','Famille',50]];state.config.fixed=F.map(function(f){return {id:f[0],label:f[1],group:f[2],amount:f[3]}});state.config.credits=[{id:'paf-hasina-1',kind:'paf1',label:'PAF Hasina – 1er du mois',who:'Hasina',amount:0},{id:'paf-hasina-2',kind:'paf2',label:'PAF Hasina – solde du 10',who:'Hasina',amount:0},{id:'paf-linda',kind:'paf',label:'PAF Linda',who:'Linda',amount:0}];state.config.courses=500;state.config.incomes=[3322.64,1550];state.config.salaryFirst=2500;Object.keys(state.months).forEach(function(k){if(k<ym)return;var m=state.months[k];(m.fixed||[]).forEach(function(x){if(x.tid==='ass-bmw'&&!x.paid){x.planned=102.77;x.actual=102.77}});m.credits=(m.credits||[]).filter(function(c){return !(c.tid==='caf'&&!c.done)})});localStorage.setItem('budget-model-v','2');persistLocal()}catch(e){}}
+function applyModel(){try{if(localStorage.getItem('budget-model-v')==='2')return;var F=[['loyer','Loyer','Logement',1461.72],['credit-regroupe','Crédit regroupé (Sofinco)','Crédits & leasing',715.86],['leasing','Leasing T-Cross','Crédits & leasing',298.27],['caf-dette','Compensation dette CAF','Crédits & leasing',110],['ass-tcross','Assurance T-Cross','Assurances',138],['ass-bmw','Assurance BMW','Assurances',102.77],['ass-hab','Assurance habitation','Assurances',14.59],['elec','Électricité','Énergie & télécom',150],['internet','Internet (Bouygues)','Énergie & télécom',36.99],['tel-enfant','Téléphone Rafaelle','Énergie & télécom',23.98],['cantine','Cantine + accueil primaire','Enfants & école',209.22],['demi-pension','Collège demi-pension','Enfants & école',76.66],['musique','Musique enfant','Enfants & école',120],['tresorerie','Trésorerie famille (Sakafo)','Famille',50]];state.config.fixed=F.map(function(f){return {id:f[0],label:f[1],group:f[2],amount:f[3]}});state.config.credits=[{id:'paf-hasina-1',kind:'paf1',label:'PAF Hasina – 1er du mois',who:'Hasina',amount:0},{id:'paf-hasina-2',kind:'paf2',label:'PAF Hasina – solde du 10',who:'Hasina',amount:0},{id:'paf-linda',kind:'paf',label:'PAF Linda',who:'Linda',amount:0}];state.config.courses=500;state.config.incomes=[3245.5,1550];state.config.salaryFirst=2500;Object.keys(state.months).forEach(function(k){if(k<ym)return;var m=state.months[k];(m.fixed||[]).forEach(function(x){if(x.tid==='ass-bmw'&&!x.paid){x.planned=102.77;x.actual=102.77}});m.credits=(m.credits||[]).filter(function(c){return !(c.tid==='caf'&&!c.done)})});localStorage.setItem('budget-model-v','2');persistLocal()}catch(e){}}
 function docFor(id){return id==='config'?state.config:state.months[id.slice(2)]}
 function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
@@ -1118,7 +1118,8 @@ function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='2')return;
     if(add.length){m.fixed=m.fixed.concat(add);ch=true}
     if(ch)touch('m-'+k)});
   localStorage.setItem('budget-fix-v','2');persistLocal()}catch(e){}}
-loadLocal();applySeed();applyModel();bankFix1();
+function applyInc(){try{if(localStorage.getItem('budget-inc-v')==='1')return;var i=state.config.incomes;if(i&&Math.abs(num(i[0])-3322.64)<0.005){i[0]=3245.5;persistLocal();touch('config')}localStorage.setItem('budget-inc-v','1')}catch(e){}}
+loadLocal();applySeed();applyModel();bankFix1();applyInc();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
 if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500)}
