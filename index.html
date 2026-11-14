@@ -210,7 +210,7 @@ input.num{font-size:16px;padding:11px 10px}
 .syn .hero .big{font-size:42px;font-weight:600;text-shadow:0 0 26px color-mix(in srgb,var(--glow) calc(var(--gk)*45%),transparent)}
 .spark{margin-top:8px;overflow:visible}
 .sparkn{display:flex;justify-content:space-between;font-size:12px;margin-top:4px}
-.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .rtile{padding:14px 4px 12px;text-align:center;cursor:pointer}
 .rwrap{position:relative;width:72px;height:72px;margin:0 auto}
 .rv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 14px var(--mono)}
@@ -514,11 +514,9 @@ function vSynth(m,c){
     .map(function(x){var g=x.actual-x.planned;return '<div class="line"><span>'+esc(x.label)+'</span><span class="n '+(g>0?'neg':'pos')+'">'+sgn(g)+'</span></div>'}).join('');
   var unpaid=m.fixed.filter(function(x){return !x.paid}).length;
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
-  var cn0=state.config.contributors,S0=c.S,got0=sum(m.credits.filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who===cn0[0]&&x.done}),function(x){return act(x,S0)});
   var cp=c.coursesPlanned>0?c.coursesSpent/c.coursesPlanned*100:0,ck=cp>100?'r':(cp>=80?'o':'g');
   var fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unpaid?'o':'g';
-  var hp=S0.share[0]>0?got0/S0.share[0]*100:0,hk=hp>=99.95?'g':'o';
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses')+ringTile('Charges',fp,fk,'fixes')+ringTile(cn0[0]||'Hasina',hp,hk,'revenus')+'</div>';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses')+ringTile('Charges',fp,fk,'fixes')+'</div>';
   var nowT=Date.now(),an=nowT-synLast>5000;synLast=nowT;
   return '<div class="syn'+(an?' an':'')+'" style="display:contents">'+
   (function(){var b=!col&&bank.bal,dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
