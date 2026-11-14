@@ -712,7 +712,26 @@ function bkClean(l){var s=String(l||'');
 function bkTitle(t){var c=bkClassify(t);
   if(c.k==='fixed'){var f=state.config.fixed.filter(function(x){return x.id===c.tid})[0];return f?f.label:bkClean(t.label)}
   if(c.k==='paf')return 'PAF '+c.who;return bkClean(t.label)}
-function bkChip(t){var c=bkClassify(t),o='';
+var bs={id:null};
+function bsExtra(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.bankId===t.id})[0]||null:null}
+function bsGrp(t){var mk=bkMonthKey(t),m=mk&&state.months[mk];return m?(m.extras||[]).filter(function(e){return e.grp===t.id}):[]}
+function bsFixed(t,m){var c=bkClassify(t),amt=Math.abs(t.amount);if(c.k!=='fixed')return null;
+  return m.fixed.filter(function(x){return x.tid===c.tid&&x.paid&&x.bank&&Math.abs(x.actual-amt)<0.015})[0]||null}
+function bsSheet(t){
+  var mk=bkMonthKey(t),ex=bsExtra(t),g=bsGrp(t),m=mk?getV(mk):null,fx=m&&t.amount<0&&!ex&&!g.length?bsFixed(t,m):null,h;
+  h='<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">';
+  if(t.amount>=0)return h+'<div class="small muted" style="margin-bottom:8px">Entrée : à gérer dans l’onglet Revenus.</div><button class="btn" data-bs="close">Fermer</button></div>';
+  if(g.length)return h+'<div class="small muted">Cette opération est rattachée à '+g.length+' achat'+(g.length>1?'s':'')+' (débit groupé). Pour la modifier, utilise « Défaire le rapprochement » dans Dépenses.</div><button class="btn" style="margin-top:8px" data-bs="close">Fermer</button></div>';
+  h+='<div class="small muted" style="margin-bottom:8px">'+(ex?'Actuellement : dépense · '+esc(ex.cat):(fx?'Actuellement : charge « '+esc(fx.label)+' » cochée':'Pas encore comptée en dépense'))+'</div>';
+  h+='<input type="text" id="bs-label" class="full" value="'+esc(ex?ex.label:bkClean(t.label))+'" aria-label="Libellé" style="margin-bottom:8px">'+
+    '<select id="bs-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===(ex?ex.cat:'Autre')?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
+    (fx?'<p class="small neg" style="margin:0 0 8px">La charge « '+esc(fx.label)+' » sera décochée.</p>':'')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-bs="save">'+(ex?'Enregistrer':'Compter en dépense')+'</button>'+
+    (m&&lkLines(m).length?'<button class="btn" data-bs="link">Rattacher à des achats saisis</button>':'')+
+    '<button class="btn" data-bs="close">Fermer</button></div></div>';
+  return h}
+function bkChip(t){var c=bkClassify(t),o='',be=t.amount<0?bsExtra(t):null;
+  if(be)o='<span class="tg">'+esc(be.cat)+'</span>';else if(t.amount<0&&bsGrp(t).length)o='<span class="tg ok">Débit groupé</span>';else
   if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
   else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
   var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))o+='<span class="tg warn">→ '+esc(ymLabel(mk))+'</span>';
@@ -747,13 +766,30 @@ function vBank(){
     var seg=[['all','Tout'],['fix','Charges'],['ex','Dépenses'],['other','À classer'],['in','Entrées']].map(function(x){return '<button class="chip seg'+(f===x[0]?' on':'')+'" data-bank="filter" data-v="'+x[0]+'">'+x[1]+'</button>'}).join('');
     var days={},order=[];fl.forEach(function(t){if(!days[t.date]){days[t.date]=[];order.push(t.date)}days[t.date].push(t)});order.sort().reverse();
     var body=order.map(function(d){var dl=new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-      return '<div class="day">'+esc(dl)+'</div>'+days[d].map(function(t){return '<div class="line tx"><span class="t">'+esc(bkTitle(t))+'<br>'+bkChip(t)+'</span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join('')}).join('');
+      return '<div class="day">'+esc(dl)+'</div>'+days[d].map(function(t){var op=t.id&&!t.pending;return '<div class="line tx'+(op?' tap':'')+'"'+(op?' role="button" data-bs="open" data-id="'+esc(t.id)+'"':'')+'><span class="t">'+esc(bkTitle(t))+'<br>'+bkChip(t)+'</span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'+(op&&bs.id===t.id?bsSheet(t):'')}).join('')}).join('');
     h+='<div class="grid2"><div class="kpi"><div class="l">Entrées</div><div class="v pos">'+fmt(tin)+'</div></div><div class="kpi"><div class="l">Sorties</div><div class="v neg">'+fmt(tout)+'</div></div></div>'+
       '<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="segs">'+seg+'</div>'+(body||'<div class="empty">Aucune opération.</div>')+
       (bank.fetched?'<div class="small muted" style="margin-top:14px">Mis à jour à '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')+'</section>';
   }
   return h;
 }
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-bs]');if(!t)return;var a=t.dataset.bs;
+  var tx=bs.id&&bank.tx?bank.tx.filter(function(x){return x.id===bs.id})[0]:null;
+  if(a==='open'){bs.id=(bs.id===t.dataset.id)?null:t.dataset.id;render()}
+  else if(a==='close'){bs.id=null;render()}
+  else if((a==='save'||a==='link')&&tx&&tx.amount<0){
+    var key=bkMonthKey(tx);if(!key)return;
+    var mm=editM(key);mm.bankSeen=mm.bankSeen||{};mm.bankSeen[tx.id]=1;
+    var lab=String(($('#bs-label')&&$('#bs-label').value)||'').trim()||bkClean(tx.label),cat=($('#bs-cat')&&$('#bs-cat').value)||'Autre';
+    var ex=mm.extras.filter(function(y){return y.bankId===tx.id})[0];
+    if(ex){ex.label=lab.slice(0,48);ex.cat=cat}
+    else{var fx=bsFixed(tx,mm);if(fx){fx.paid=false;fx.bank=false;fx.actual=fx.planned}
+      ex={id:uid(),label:lab.slice(0,48),cat:cat,amount:Math.abs(tx.amount),date:tx.date,bankId:tx.id};mm.extras.push(ex)}
+    touch('m-'+key);bs.id=null;
+    if(a==='link'){ym=key;lk={on:true,tx:ex.id,sel:{}};var pk=lkPick(getV(key),ex.amount);(pk||[]).forEach(function(id){lk.sel[id]=1});state.tab='depenses';render();window.scrollTo(0,0)}
+    else render()}
+});
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-lk]');if(!t)return;var a=t.dataset.lk,m=getV(ym),i;
   if(a==='open'){lk={on:true,tx:null,sel:{}};var sg=lkTx(m).filter(function(x){return lkPick(m,x.amount)})[0];
