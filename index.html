@@ -308,7 +308,8 @@ function sum(a,f){return a.reduce(function(s,x){return s+f(x)},0)}
 function shares(m){
   var cfg=state.config;
   var base=sum(m.fixed,function(x){return x.planned})+(m.courses.planned||0);
-  var i0=num(cfg.incomes[0]),i1=num(cfg.incomes[1]),tot=i0+i1,known=tot>0;
+  var mi=(m.incomes&&m.incomes.length===2)?m.incomes:cfg.incomes;
+  var i0=num(mi[0]),i1=num(mi[1]),tot=i0+i1,known=tot>0;
   var p0=known?i0/tot:0.5;
   var s0=Math.round(base*p0*100)/100,s1=Math.round((base-s0)*100)/100;
   var sf=num(cfg.salaryFirst),first=(i0>0&&sf>0)?Math.round(s0*Math.min(sf,i0)/i0*100)/100:s0;
@@ -488,6 +489,10 @@ function vRev(m,c){
   return vShare(m,c,true)+'<section class="card"><h2>Versements du mois</h2>'+
     (rows?'<p class="small muted" style="margin:0 0 4px">Coche = reçu · le montant est modifiable</p>'+rows:'<div class="empty">Aucun versement. Ajoutes-en un ci-dessous.</div>')+
     '<div class="line"><b>Total reçu</b><span class="n"><b>'+fmt(c.creditsReal)+'</b> <span class="muted">/ '+fmt(c.creditsPlanned)+'</span></span></div></section>'+
+    (function(){var cn=state.config.contributors,ov=!!(m.incomes&&m.incomes.length===2),mi=ov?m.incomes:state.config.incomes;
+      return '<section class="card"><h2>Revenus nets du mois</h2><div class="grid2">'+[0,1].map(function(i){return '<label class="small muted">'+esc(cn[i]||('Personne '+(i+1)))+'<input class="num" inputmode="decimal" data-minc="'+i+'" value="'+inp(mi[i])+'" style="margin-top:4px"></label>'}).join('')+'</div>'+
+        '<div class="small muted" style="margin-top:10px">Répartition : '+esc(cn[0]||'')+' '+(c.S.p[0]*100).toFixed(1).replace('.',',')+' % · '+esc(cn[1]||'')+' '+(c.S.p[1]*100).toFixed(1).replace('.',',')+' %'+(ov?' · revenus modifiés pour ce mois':' · revenus du Modèle')+'</div>'+
+        (ov?'<button class="btn" style="margin-top:10px" data-mi="reset">Revenir aux revenus du Modèle</button>':'')+'</section>'})()+
     '<section class="card"><h2>Ajouter un revenu</h2><form class="form" data-form="add-credit">'+
       '<input type="text" name="label" placeholder="Libellé (ex. CAF)" required class="full" aria-label="Libellé">'+
       '<select name="who" aria-label="De la part de">'+opts+'</select>'+
@@ -657,7 +662,7 @@ function vModel(){
   var tot=sum(cfg.fixed,function(t){return t.amount});
   var inc=cfg.contributors.slice(0,2).map(function(n,i){return '<label class="small muted">Revenu net mensuel '+esc(n)+'<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label>'}).join('');
   return '<section class="card"><h2>Contributeurs</h2><div class="grid2">'+names+'</div></section>'+
-    '<section class="card"><h2>Répartition des charges</h2><p class="small muted" style="margin:0 0 10px">Part de chacun = revenu net / total des revenus nets, appliquée aux charges + enveloppe courses.</p><div class="grid2">'+inc+'</div>'+
+    '<section class="card"><h2>Répartition des charges</h2><p class="small muted" style="margin:0 0 10px">Part de chacun = revenu net / total des revenus nets, appliquée aux charges + enveloppe courses. Ces revenus sont ceux par défaut : modifiables mois par mois dans l’onglet Revenus.</p><div class="grid2">'+inc+'</div>'+
             '<label class="small muted" style="display:block;margin-top:10px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste arrive le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>'+
     '<section class="card"><h2>Charges par défaut · '+fmt(tot)+'</h2>'+(fx||'<div class="empty">Aucune ligne.</div>')+
       '<form class="form" data-form="cfg-fixed"><input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
@@ -806,6 +811,10 @@ function vBank(){
   }
   return h;
 }
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-mi]');if(!t)return;
+  if(t.dataset.mi==='reset'){var m=editM(ym);delete m.incomes;commitM()}
+});
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-fx]');if(!t)return;var a=t.dataset.fx;
   if(a==='open'){fx.id=(fx.id===t.dataset.id)?null:t.dataset.id;render()}
@@ -1078,6 +1087,7 @@ document.addEventListener('change',function(e){
     var m3=state.months[ym]; if(m3){m3.credits.forEach(function(x){if(x.who===old)x.who=nv});touch('m-'+ym)}
     commitCfg();
   }
+  else if(el.dataset.minc!==undefined){var mm0=editM(ym),b0=(mm0.incomes&&mm0.incomes.length===2)?mm0.incomes.slice():state.config.incomes.slice(0,2);b0[+el.dataset.minc]=num(el.value);mm0.incomes=b0;commitM()}
   else if(el.dataset.income!==undefined){state.config.incomes[+el.dataset.income]=num(el.value);commitCfg()}
   else if(el.dataset.firstpay){state.config.firstPayment=num(el.value);commitCfg()}
   else if(el.dataset.salfirst){state.config.salaryFirst=num(el.value);commitCfg()}
