@@ -1166,8 +1166,8 @@ function doSync(silent){
   }).catch(syFail);
 }
 function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages'],['banque','Banque','Connexion Fortuneo, synchro, opérations']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
-var nsErr='',NSN={h:'Hasina',l:'Linda',b:'Budget des deux'};
-function nsName(k){var cn=state.config.contributors;return k==='h'?(cn[0]||'Hasina'):(k==='l'?(cn[1]||'Linda'):'Budget des deux')}
+var nsErr='',NSN={h:'Hasina',l:'Linda',b:'Compte joint'};
+function nsName(k){var cn=state.config.contributors;return k==='h'?(cn[0]||'Hasina'):(k==='l'?(cn[1]||'Linda'):'Compte joint')}
 function nsDate(d){d=String(d||'');return d.length>=10?d.slice(8,10)+'/'+d.slice(5,7):d}
 function vNous(m,c){
   var N=nsd(),open=N.ledger.filter(function(x){return !x.done});
@@ -1177,7 +1177,7 @@ function vNous(m,c){
   var H=nsName('h'),L=nsName('l');
   var head='<section class="card"><h2>Avances entre vous</h2><div class="big '+(net===0?'':(net>0?'pos':'neg'))+'" style="font-size:30px">'+(net===0?'Quitte':fmt(Math.abs(net)))+'</div>'+
     '<div class="small muted" style="margin-top:6px">'+(net>0?esc(L)+' doit à '+esc(H):(net<0?esc(H)+' doit à '+esc(L):'Aucune avance entre '+esc(H)+' et '+esc(L)))+'</div>'+
-    ((bh||bl)?'<div class="tags" style="margin-top:8px">'+(bh?'<span class="tag tw">Budget des deux doit '+fmt(bh)+' à '+esc(H)+'</span>':'')+(bl?'<span class="tag tw">Budget des deux doit '+fmt(bl)+' à '+esc(L)+'</span>':'')+'</div>':'')+'</section>';
+    ((bh||bl)?'<div class="tags" style="margin-top:8px">'+(bh?'<span class="tag tw">Compte joint doit '+fmt(bh)+' à '+esc(H)+'</span>':'')+(bl?'<span class="tag tw">Compte joint doit '+fmt(bl)+' à '+esc(L)+'</span>':'')+'</div>':'')+'</section>';
   var show=N.ledger.filter(function(x){var mo=String(x.date||'').slice(0,7);return mo===ym||(x.done&&x.doneIn===ym)||(!x.done&&mo<ym)}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var rows=show.map(function(x){var mo=String(x.date||'').slice(0,7),car=(!x.done&&mo<ym)||(x.done&&x.doneIn&&x.doneIn!==mo&&mo!==ym);
     return '<div class="row'+(x.done?' is-done':'')+'"><label class="chk"><input type="checkbox" data-ns="done" data-id="'+x.id+'"'+(x.done?' checked':'')+' aria-label="Réglé"><span></span></label>'+
