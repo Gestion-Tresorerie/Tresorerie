@@ -124,6 +124,73 @@ svg .ax{fill:var(--muted);font-size:10px;font-family:var(--font)}
 textarea{min-height:90px;font-family:var(--mono);font-size:12px}
 @media (max-width:380px){.cols,.row{grid-template-columns:28px 1fr 72px 72px 24px}}
 @media (prefers-reduced-motion:no-preference){.bar>i{transition:width .25s ease}}
+/* ===== UX v2 : cartes plates, respiration, lisibilité ===== */
+:root{--card:rgba(255,255,255,.88);--card-line:rgba(40,60,100,.12);--r:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--card:rgba(15,21,40,.86);--card-line:rgba(255,255,255,.10);--muted:#b8c3d6}}
+:root[data-theme="dark"]{--card:rgba(15,21,40,.86);--card-line:rgba(255,255,255,.10);--muted:#b8c3d6}
+body{font-size:16px;line-height:1.5;padding-bottom:96px}
+body::before{opacity:.4}
+.head{padding:12px 0}
+.ib{width:40px;height:44px;border-radius:12px}
+.head{gap:6px}
+.monthnav h1{font-size:16px;min-width:112px}
+#status{flex:0 1 auto;min-width:0;max-width:36vw;overflow:hidden;text-overflow:ellipsis}
+.chip{font-size:13px;padding:5px 11px}
+main{padding:18px 0 32px;gap:16px}
+.card,.kpi,.hrow{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);border:1px solid var(--card-line);box-shadow:none;border-radius:var(--r)}
+.card{padding:18px}
+.card h2{font-size:12px;letter-spacing:.08em;margin:0 0 14px}
+.hero .big{font-size:38px;line-height:1.15}
+.hero .sub{font-size:14px;line-height:1.55;margin-top:6px}
+.grid2{gap:16px}
+.kpi{padding:14px 16px}
+.kpi .l{font-size:13px}
+.kpi .v{font-size:22px;margin-top:6px}
+.kpi.wide{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+.kpi.wide .v{margin-top:0}
+.bar{height:10px}
+.line{padding:13px 0;min-height:52px;align-items:center}
+.share{padding:18px 0}
+.share .small{margin-top:4px;font-size:13px}
+.vers{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:14px}
+.pill{font-size:12px;padding:3px 9px}
+.row{grid-template-columns:40px 1fr 98px 30px;gap:8px;padding:12px 0;min-height:60px}
+.row.vr,.cols.vr{grid-template-columns:40px 1fr 98px 30px}
+.row input.num{padding:10px 8px;font-size:15px}
+.row .t{font-size:16px;line-height:1.3}
+.row .t small{font-size:13px;margin-top:3px}
+.cols{display:none}
+.chk{width:40px;height:44px}
+.chk span{width:26px;height:26px;border-radius:8px}
+.chk input:checked+span::after{width:7px;height:13px;transform:translate(7px,2px) rotate(45deg)}
+input[type=text],input[type=date],input[type=number],select,textarea{font-size:16px;padding:11px 12px;border-radius:10px;min-height:44px}
+input.num{font-size:16px;padding:11px 10px}
+.x{width:30px;height:36px;font-size:22px;padding:0}
+.grp{margin:0 0 8px}.grp b{font-size:15px}.grp .n{font-size:14px}
+.btn{padding:12px 18px;min-height:44px;border-radius:12px}
+.form{gap:12px;margin-top:14px}
+.note{font-size:13px;padding:10px 12px;border-radius:10px;margin:10px 0}
+.empty{padding:24px 8px}
+.cfgrow{padding:12px 0;gap:10px}
+.cfgrow.fx{grid-template-columns:1fr 112px 40px;grid-template-areas:"l a x" "g g g"}
+.cfgrow.fx>:nth-child(1){grid-area:l}.cfgrow.fx>:nth-child(2){grid-area:g}.cfgrow.fx>:nth-child(3){grid-area:a}.cfgrow.fx>:nth-child(4){grid-area:x}
+.tabbar{padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 11px;font-size:12px;border-top:0}
+.tabbar button[aria-current="page"]{border-top:0}
+.tabbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.segs{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}
+.segs::-webkit-scrollbar{display:none}
+.chip.seg{cursor:pointer;flex:none;font:inherit;font-size:14px;padding:8px 14px}
+.chip.seg.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.day{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:18px 0 6px;border-bottom:1px solid var(--line)}
+.tx{align-items:flex-start;border-top:0;border-bottom:1px solid var(--line)}
+.tx .t{min-width:0;overflow-wrap:anywhere}
+.tg{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin:5px 6px 0 0}
+.tg.ok{color:var(--good);background:var(--good-bg);border-color:transparent}
+.tg.warn{color:var(--warn);background:var(--warn-bg);border-color:transparent}
+.menu{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:16px 0;cursor:pointer}
+.menu:first-of-type{border-top:0}
+.menu small{display:block;font-size:13px;margin-top:2px}
 </style>
 </head>
 <body>
@@ -140,13 +207,11 @@ textarea{min-height:90px;font-family:var(--mono);font-size:12px}
 </header>
 <main class="wrap" id="view"></main>
 <div class="tabbar"><nav aria-label="Sections">
-  <button data-act="tab" data-tab="synthese">Synthèse</button>
-  <button data-act="tab" data-tab="revenus">Revenus</button>
-  <button data-act="tab" data-tab="fixes">Charges</button>
-  <button data-act="tab" data-tab="depenses">Dépenses</button>
-  <button data-act="tab" data-tab="historique">Historique</button>
-  <button data-act="tab" data-tab="banque">Banque</button>
-  <button data-act="tab" data-tab="modele">Modèle</button>
+  <button data-act="tab" data-tab="synthese"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z"/></svg>Synthèse</button>
+  <button data-act="tab" data-tab="fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Charges</button>
+  <button data-act="tab" data-tab="depenses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Dépenses</button>
+  <button data-act="tab" data-tab="banque"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>Banque</button>
+  <button data-act="tab" data-tab="plus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>Plus</button>
 </nav></div>
 
 <script>
@@ -170,7 +235,7 @@ var STATUS={
 };
 var LS='budget-foyer-v1';
 
-var NOTES={'internet':'Avancé par Hasina : réglé quand le virement est fait sur son compte','tel-enfant':'Avancé par Hasina : réglé quand le virement est fait sur son compte'};
+var NOTES={'internet':'Avancé par Hasina · payé au virement','tel-enfant':'Avancé par Hasina · payé au virement'};
 var d0=new Date();
 var ym=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');
 var state={config:{contributors:['Hasina','Linda'],courses:500,resto:60,fixed:[],credits:[],incomes:[3322.64,1550],firstPayment:1700,salaryFirst:2500},months:{},tab:'synthese',status:'loading'};
@@ -351,7 +416,7 @@ function vShare(m,c,full){
     var rest=full?(S.income[i]>0?'<div class="line" style="border:0;padding:8px 0 0"><span>Budget restant <span class="small muted">(revenu net '+fmt(S.income[i])+' − part)</span></span><span class="n '+(left>=0?'pos':'neg')+'"><b>'+fmt(left)+'</b></span></div>':'<div class="note warn">Revenu net non renseigné : budget restant indisponible.</div>'):'';
     var over=S.over[i]?'<div class="note bad">Part supérieure au revenu net ('+fmt(S.income[i])+').</div>':'';
     return '<div class="share"><div class="line" style="border:0;padding-bottom:2px"><span><b>'+esc(name)+'</b> <span class="pill">'+pct(S.p[i])+'</span></span><span class="n"><b>'+fmt(S.share[i])+'</b></span></div>'+
-      detail+bar(got,S.share[i],true)+'<div class="small muted" style="margin-top:4px">Versé '+fmt(got)+' sur '+fmt(S.share[i])+(got<S.share[i]?' · reste à verser '+fmt(S.share[i]-got):'')+'</div>'+over+rest+'</div>';
+      bar(got,S.share[i],true)+'<div class="vers"><span>Versé <b>'+fmt(got)+'</b></span><span class="'+(got<S.share[i]?'neg':'pos')+'">'+(got<S.share[i]?'reste '+fmt(S.share[i]-got):'complet')+'</span></div>'+detail+over+rest+'</div>';
   }).join('');
   return '<section class="card tap" role="button" data-act="tab" data-tab="revenus"><h2>Répartition des charges</h2>'+warn+
     '<div class="line" style="border:0;padding-top:0"><span class="muted small">Charges + courses à financer</span><span class="n"><b>'+fmt(S.base)+'</b></span></div>'+rows+'</section>';
@@ -370,7 +435,7 @@ function vSynth(m,c){
   '<div class="grid2">'+
     '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div></div>'+
     '<div class="kpi"><div class="l">Reste à payer (charges)</div><div class="v">'+fmt(c.fixedRemain)+'</div></div>'+
-    '<div class="kpi tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
+    '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
   '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
     '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div></section>'+
@@ -392,7 +457,7 @@ function vRev(m,c){
   }).join('');
   var opts=who(m).map(function(w){return '<option>'+esc(w)+'</option>'}).join('');
   return vShare(m,c,true)+'<section class="card"><h2>Versements du mois</h2>'+
-    (rows?'<div class="cols vr"><span></span><span>Cocher = reçu</span><span>Montant</span><span></span></div>'+rows:'<div class="empty">Aucun versement. Ajoutes-en un ci-dessous.</div>')+
+    (rows?'<p class="small muted" style="margin:0 0 4px">Coche = reçu · le montant est modifiable</p>'+rows:'<div class="empty">Aucun versement. Ajoutes-en un ci-dessous.</div>')+
     '<div class="line"><b>Total reçu</b><span class="n"><b>'+fmt(c.creditsReal)+'</b> <span class="muted">/ '+fmt(c.creditsPlanned)+'</span></span></div></section>'+
     '<section class="card"><h2>Ajouter un revenu</h2><form class="form" data-form="add-credit">'+
       '<input type="text" name="label" placeholder="Libellé (ex. CAF)" required class="full" aria-label="Libellé">'+
@@ -466,9 +531,8 @@ function vFix(m,c){
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">'+sgn(dv)+' vs prévu</small>':'')+'</div>'+
-        '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="planned" data-n="1" value="'+inp(x.planned)+'" aria-label="Prévu">'+
-        '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="actual" data-n="1" value="'+inp(x.actual)+'"'+(x.paid?'':' disabled')+' aria-label="Réel">'+
+        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque</small>':'')+'</div>'+
+        '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
         '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>';
       }).join('')+'</section>';
   }).join('');
@@ -476,7 +540,7 @@ function vFix(m,c){
   var nCar=Object.keys(m.carry||{}).length;
   var carNote=nCar?'<div class="note warn">'+nCar+' charge'+(nCar>1?'s reportées':' reportée')+' de mois précédents : elles restent ici tant qu’elles ne sont pas cochées.</div>':(m.carriedOut?'<div class="note">'+m.carriedOut+' charge'+(m.carriedOut>1?'s non payées reportées':' non payée reportée')+' sur '+esc(ymLabel(CUR))+'.</div>':'');
   return '<section class="card"><div class="grp"><b>Total charges (fixes + prévisionnelles)</b><span class="n">'+fmt(c.fixedPaid)+' payé / '+fmt(c.fixedPlanned)+'</span></div>'+bar(c.fixedPaid,c.fixedPlanned)+
-    '<div class="cols" style="margin-top:10px"><span></span><span>Cocher = payé</span><span>Prévu</span><span>Réel</span><span></span></div>'+carNote+'</section>'+
+    '<p class="small muted" style="margin:12px 0 0">Coche = payé · le montant est modifiable</p>'+carNote+'</section>'+
     (html||'<div class="empty card">Aucune charge. Ajoute-en ici ou dans l’onglet Modèle.</div>')+
     '<section class="card"><h2>Ajouter une charge pour ce mois</h2><form class="form" data-form="add-fixed">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
@@ -579,6 +643,21 @@ function bkTag(t){
   var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))n+=' · '+ymLabel(mk);
   return ' · '+esc(n);
 }
+function bkClean(l){var s=String(l||'');
+  s=s.replace(/^(?:VIR INST|VIR|PRLV SEPA|PRLV|CARTE \d{2}\/\d{2}|RET DAB \d{2}\/\d{2}\/\d{2}|CHQ)\s*/i,'');
+  s=s.replace(/\b[A-Z0-9-]{12,}\b/g,'').replace(/\b\d{6,}\b/g,'').replace(/\bREF-?\S*/gi,'');
+  var w=s.split(/\s+/).filter(Boolean),h=Math.ceil(w.length/2);
+  if(w.length>=4&&w.slice(0,h).join(' ').toLowerCase()===w.slice(h).join(' ').toLowerCase())w=w.slice(0,h);
+  s=w.join(' ').trim();if(!s)s=String(l||'—').slice(0,40);
+  return s.length>56?s.slice(0,54)+'…':s}
+function bkTitle(t){var c=bkClassify(t);
+  if(c.k==='fixed'){var f=state.config.fixed.filter(function(x){return x.id===c.tid})[0];return f?f.label:bkClean(t.label)}
+  if(c.k==='paf')return 'PAF '+c.who;return bkClean(t.label)}
+function bkChip(t){var c=bkClassify(t),o='';
+  if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
+  else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
+  var mk=bkMonthKey(t);if(mk&&mk!==(t.date||'').slice(0,7))o+='<span class="tg warn">→ '+esc(ymLabel(mk))+'</span>';
+  if(t.pending)o+='<span class="tg warn">en attente</span>';return o}
 function vBank(){
   var h='';
   if(bank.msg)h+='<div class="note warn">'+esc(bank.msg)+'</div>';
@@ -604,8 +683,15 @@ function vBank(){
   if(bank.tx){
     var end=ym+'-31',list=bank.tx.filter(function(t){return t.date&&bkMonthKey(t)===ym});
     var tin=sum(list,function(t){return t.amount>0?t.amount:0}),tout=sum(list,function(t){return t.amount<0?-t.amount:0});
-    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin-bottom:6px">Entrées '+fmt(tin)+' · Sorties '+fmt(tout)+(bank.fetched?' · mis à jour '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'')+'</div>'+
-      (list.length?list.map(function(t){return '<div class="line"><span class="t">'+esc(t.label||'—')+'<br><span class="small muted">'+esc(t.date)+(t.pending?' · en attente':'')+bkTag(t)+'</span></span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération ce mois-ci.</div>')+'</section>';
+    var f=bank.f||'all';
+    var fl=list.filter(function(t){var c=bkClassify(t);return f==='all'||(f==='fix'&&c.k==='fixed')||(f==='ex'&&c.k==='extra')||(f==='other'&&c.k==='extra'&&c.cat==='Autre')||(f==='in'&&t.amount>0)});
+    var seg=[['all','Tout'],['fix','Charges'],['ex','Dépenses'],['other','À classer'],['in','Entrées']].map(function(x){return '<button class="chip seg'+(f===x[0]?' on':'')+'" data-bank="filter" data-v="'+x[0]+'">'+x[1]+'</button>'}).join('');
+    var days={},order=[];fl.forEach(function(t){if(!days[t.date]){days[t.date]=[];order.push(t.date)}days[t.date].push(t)});order.sort().reverse();
+    var body=order.map(function(d){var dl=new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+      return '<div class="day">'+esc(dl)+'</div>'+days[d].map(function(t){return '<div class="line tx"><span class="t">'+esc(bkTitle(t))+'<br>'+bkChip(t)+'</span><span class="n '+(t.amount>=0?'pos':'neg')+'">'+sgn(t.amount)+'</span></div>'}).join('')}).join('');
+    h+='<div class="grid2"><div class="kpi"><div class="l">Entrées</div><div class="v pos">'+fmt(tin)+'</div></div><div class="kpi"><div class="l">Sorties</div><div class="v neg">'+fmt(tout)+'</div></div></div>'+
+      '<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2><div class="segs">'+seg+'</div>'+(body||'<div class="empty">Aucune opération.</div>')+
+      (bank.fetched?'<div class="small muted" style="margin-top:14px">Mis à jour à '+new Date(bank.fetched).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')+'</section>';
   }
   return h;
 }
@@ -613,6 +699,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('[data-bank]');if(!t)return;var a=t.dataset.bank;
   if(a==='logout'){bank.token=null;bank.st=null;bank.tx=null;try{localStorage.removeItem('budget-bank-token')}catch(x){}render()}
   else if(a==='refresh'){bankTx(true)}
+  else if(a==='filter'){bank.f=t.dataset.v;render()}
   else if(a==='connect'){bank.busy=true;render();bankCall('/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url){window.location.href=x.d.url}else{bank.busy=false;bank.msg='Connexion à Fortuneo impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(bankFail)}
 });
 document.addEventListener('submit',function(e){
@@ -693,12 +780,13 @@ function bankSync(){
   return s;
 }
 
+function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
 function render(){
   $('#month').textContent=ymLabel(ym);
   paintStatus();
-  document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===state.tab?'page':'false')});
+  document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele'].indexOf(state.tab)>=0))?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,depenses:vDep,historique:vHist,banque:vBank,modele:vModel}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,depenses:vDep,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
   var keepFocus=null;
   $('#view').innerHTML=f(m,c);
 }
