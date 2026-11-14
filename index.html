@@ -200,6 +200,35 @@ input.num{font-size:16px;padding:11px 10px}
 .todo small{display:block;font-size:13px;margin-top:2px}
 .todo .n{flex:none}
 .todo.on b::before{content:"● "}
+/* Synthèse : relief, anneaux, courbe */
+:root{--gk:0;--gl1:rgba(255,255,255,.92);--gl2:rgba(255,255,255,.62);--gl-edge:rgba(40,60,100,.12);--gl-hi:rgba(255,255,255,.9);--gl-sh:0 6px 22px rgba(40,60,110,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--gk:1;--gl1:rgba(255,255,255,.10);--gl2:rgba(255,255,255,.03);--gl-edge:rgba(255,255,255,.12);--gl-hi:rgba(255,255,255,.16);--gl-sh:0 10px 30px rgba(0,0,0,.32)}}
+:root[data-theme="dark"]{--gk:1;--gl1:rgba(255,255,255,.10);--gl2:rgba(255,255,255,.03);--gl-edge:rgba(255,255,255,.12);--gl-hi:rgba(255,255,255,.16);--gl-sh:0 10px 30px rgba(0,0,0,.32)}
+.syn .card,.syn .rtile{background:linear-gradient(160deg,var(--gl1),var(--gl2));border:1px solid var(--gl-edge);box-shadow:var(--gl-sh),inset 0 1px 0 var(--gl-hi);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:20px}
+.syn .hero.glow{--glow:var(--good);padding-bottom:12px;box-shadow:var(--gl-sh),0 0 44px color-mix(in srgb,var(--glow) calc(var(--gk)*22%),transparent),inset 0 1px 0 var(--gl-hi)}
+.syn .hero.gneg{--glow:var(--bad)}
+.syn .hero .big{font-size:42px;font-weight:600;text-shadow:0 0 26px color-mix(in srgb,var(--glow) calc(var(--gk)*45%),transparent)}
+.spark{margin-top:8px;overflow:visible}
+.sparkn{display:flex;justify-content:space-between;font-size:12px;margin-top:4px}
+.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rtile{padding:14px 4px 12px;text-align:center;cursor:pointer}
+.rwrap{position:relative;width:72px;height:72px;margin:0 auto}
+.rv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 14px var(--mono)}
+.rl{font-size:12px;color:var(--muted);margin-top:8px}
+.ring .rt{stroke:var(--line)}
+.ring .rp{filter:drop-shadow(0 0 calc(var(--gk)*5px) currentColor)}
+.rl .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.dot.g{background:var(--good);box-shadow:0 0 calc(var(--gk)*8px) var(--good)}
+.dot.o{background:var(--warn);box-shadow:0 0 calc(var(--gk)*8px) var(--warn)}
+.dot.r{background:var(--bad);box-shadow:0 0 calc(var(--gk)*8px) var(--bad)}
+@media (prefers-reduced-motion:no-preference){
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+@keyframes rg{from{stroke-dashoffset:var(--L)}}
+.syn.an>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.syn.an>:nth-child(2){animation-delay:.06s}.syn.an>:nth-child(3){animation-delay:.12s}.syn.an>:nth-child(4){animation-delay:.18s}.syn.an>:nth-child(5){animation-delay:.24s}.syn.an>:nth-child(6){animation-delay:.3s}.syn.an>:nth-child(7){animation-delay:.36s}
+.syn.an .rp{animation:rg 1.3s cubic-bezier(.2,.8,.2,1) .2s both}
+}
+
 </style>
 </head>
 <body>
@@ -452,6 +481,31 @@ function vTodo(m,c){
   if(!col&&syncPending())it.push({act:'sync',t:'Modifications non synchronisées',v:'Valider',d:'Envoie-les pour les retrouver sur l’autre téléphone'});
   return '<section class="card"><h2>À faire</h2>'+(it.length?it.map(function(x){return '<div class="todo tap" role="button"'+(x.lk?' data-lk="open"':' data-act="'+(x.act||'tab')+'"'+(x.tab?' data-tab="'+x.tab+'"':''))+'><span><b>'+esc(x.t)+'</b>'+(x.d?'<small class="muted">'+esc(x.d)+'</small>':'')+'</span><span class="n '+(x.cls||'')+'">'+esc(x.v||'')+' ›</span></div>'}).join(''):'<div class="empty" style="padding:6px 0">Rien à faire : tout est à jour ✓</div>')+'</section>';
 }
+var synLast=0;
+function stCol(k){return k==='g'?'var(--good)':(k==='o'?'var(--warn)':'var(--bad)')}
+function ringSvg(p,k){var R=29,L=2*Math.PI*R,pp=Math.max(0,Math.min(100,p));return '<svg class="ring" viewBox="0 0 70 70" width="72" height="72" aria-hidden="true"><circle class="rt" cx="35" cy="35" r="29" fill="none" stroke-width="7"/><circle class="rp" cx="35" cy="35" r="29" fill="none" style="stroke:'+stCol(k)+';color:'+stCol(k)+';--L:'+L.toFixed(1)+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+L.toFixed(1)+'" stroke-dashoffset="'+(L*(1-pp/100)).toFixed(1)+'" transform="rotate(-90 35 35)"/></svg>'}
+function ringTile(label,p,k,tab){return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+Math.round(p)+'%</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div></div>'}
+function balSpark(){
+  var b=!col&&bank.bal;if(!b||!bank.tx||!bank.tx.length)return '';
+  var nowYm=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');if(ym!==nowYm)return '';
+  var last=nowYm+'-'+String(d0.getDate()).padStart(2,'0');
+  var end=num(b.amount),tx=bank.tx.filter(function(t){return t.date&&String(t.date).slice(0,10)<=last}),first=ym+'-01',ed=null;
+  tx.forEach(function(t){var d=String(t.date).slice(0,10);if(!ed||d<ed)ed=d});
+  if(!ed)return '';var from=ed>first?ed:first,i0=+from.slice(8,10),i1=d0.getDate(),pts=[],i;
+  for(i=i0;i<=i1;i++){var D=ym+'-'+String(i).padStart(2,'0');var v=end-sum(tx.filter(function(t){return String(t.date).slice(0,10)>D}),function(t){return num(t.amount)});pts.push({d:D,v:Math.round(v*100)/100})}
+  if(pts.length<2)return '';
+  var mn=Math.min(0,Math.min.apply(null,pts.map(function(p){return p.v}))),mx=Math.max(0,Math.max.apply(null,pts.map(function(p){return p.v}))),pad=(mx-mn)*0.12||1;mn-=pad;mx+=pad;
+  var W=300,H=70,X=function(j){return (j/(pts.length-1)*W).toFixed(1)},Y=function(v){return (H-(v-mn)/(mx-mn)*H).toFixed(1)},zy=Y(0);
+  var line=pts.map(function(p,j){return (j?'L':'M')+X(j)+' '+Y(p.v)}).join(' '),area=line+' L'+W+' '+zy+' L0 '+zy+' Z',lp=pts[pts.length-1];
+  var cross=-1;pts.forEach(function(p,j){if(p.v<0&&(j===0||pts[j-1].v>=0))cross=j});
+  var neg=lp.v<0,fr=function(d){return d.slice(8,10)+'/'+d.slice(5,7)},note;
+  if(neg&&cross>=0)note='Sous 0 € depuis le '+fr(pts[cross].d);else if(neg)note='Sous 0 € depuis le début de la période';
+  else{var anyNeg=pts.some(function(p){return p.v<0});var back=-1;pts.forEach(function(p,j){if(p.v>=0&&j>0&&pts[j-1].v<0)back=j});note=anyNeg&&back>=0?'Repassé au-dessus de 0 € le '+fr(pts[back].d):'Toujours positif ce mois-ci'}
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" width="100%" height="70" preserveAspectRatio="none" role="img" aria-label="Évolution du solde"><defs><clipPath id="spU"><rect x="0" y="0" width="'+W+'" height="'+zy+'"/></clipPath><clipPath id="spD"><rect x="0" y="'+zy+'" width="'+W+'" height="'+H+'"/></clipPath></defs>'+
+    '<g clip-path="url(#spU)"><path d="'+area+'" style="fill:var(--good);opacity:.16"/><path d="'+line+'" fill="none" style="stroke:var(--good)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></g>'+
+    '<g clip-path="url(#spD)"><path d="'+area+'" style="fill:var(--bad);opacity:.2"/><path d="'+line+'" fill="none" style="stroke:var(--bad)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></g>'+
+    '<line x1="0" x2="'+W+'" y1="'+zy+'" y2="'+zy+'" style="stroke:var(--muted)" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke" opacity=".7"/></svg>'+
+    '<div class="sparkn"><span class="muted">0 € ┄</span><span class="'+(neg?'neg':'pos')+'">'+esc(note)+'</span></div>'}
 function vSynth(m,c){
   var cls=c.proj>=0?'pos':'neg';
   var paf=vShare(m,c);
@@ -460,15 +514,22 @@ function vSynth(m,c){
     .map(function(x){var g=x.actual-x.planned;return '<div class="line"><span>'+esc(x.label)+'</span><span class="n '+(g>0?'neg':'pos')+'">'+sgn(g)+'</span></div>'}).join('');
   var unpaid=m.fixed.filter(function(x){return !x.paid}).length;
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
-  return ''+
+  var cn0=state.config.contributors,S0=c.S,got0=sum(m.credits.filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who===cn0[0]&&x.done}),function(x){return act(x,S0)});
+  var cp=c.coursesPlanned>0?c.coursesSpent/c.coursesPlanned*100:0,ck=cp>100?'r':(cp>=80?'o':'g');
+  var fp=c.fixedPlanned>0?c.fixedPaid/c.fixedPlanned*100:0,fk=unpaid?'o':'g';
+  var hp=S0.share[0]>0?got0/S0.share[0]*100:0,hk=hp>=99.95?'g':'o';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses')+ringTile('Charges',fp,fk,'fixes')+ringTile(cn0[0]||'Hasina',hp,hk,'revenus')+'</div>';
+  var nowT=Date.now(),an=nowT-synLast>5000;synLast=nowT;
+  return '<div class="syn'+(an?' an':'')+'" style="display:contents">'+
   (function(){var b=!col&&bank.bal,dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
-    return '<section class="card hero"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
+    return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
+  rings+
   vTodo(m,c)+
-  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div>'+bar(c.coursesSpent,c.coursesPlanned)+'<div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
+  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div><div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
     '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
-  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
-    '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>';
+  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges</h2>'+
+    '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section></div>';
 }
 
 function vRev(m,c){
