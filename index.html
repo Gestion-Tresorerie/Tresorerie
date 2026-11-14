@@ -674,27 +674,31 @@ function vHist(){
 
 var lk={on:false,tx:null,sel:{}};
 function lkLines(m){return (m.extras||[]).filter(function(e){return !e.bankId&&!e.grp})}
+function lkXt(m){return (m.fixed||[]).filter(function(x){return isX(x)&&!x.paid&&!x.grp&&!(m.carry&&m.carry[x.id])})}
+function lkA(x){return x.amount!=null?x.amount:x.planned}
 function lkTx(m){return (m.extras||[]).filter(function(e){return e.bankId}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))})}
 function lkPick(m,amt){
-  var L=lkLines(m).sort(function(a,b){return String(b.date).localeCompare(String(a.date))}).slice(0,12),n=L.length,i,j,t,r;
-  for(i=1;i<(1<<n);i++){t=0;for(j=0;j<n;j++)if(i&(1<<j))t+=L[j].amount;
+  var L=lkLines(m).sort(function(a,b){return String(b.date).localeCompare(String(a.date))}).slice(0,12).concat(lkXt(m).slice(0,6)),n=L.length,i,j,t,r;
+  for(i=1;i<(1<<n);i++){t=0;for(j=0;j<n;j++)if(i&(1<<j))t+=lkA(L[j]);
     if(Math.abs(t-amt)<0.015){r=[];for(j=0;j<n;j++)if(i&(1<<j))r.push(L[j].id);return r}}
   return null}
 function vLink(m){
   if(col||!bank.token)return '';
-  var L=lkLines(m),T=lkTx(m);
-  if(!L.length||!T.length)return '';
-  if(!lk.on)return '<section class="card"><div class="grp"><b>Débit groupé ?</b></div><p class="small muted" style="margin:6px 0 12px">Plusieurs achats saisis à part, payés en un seul débit Fortuneo : relie-les.</p><button class="btn" data-lk="open">Relier un débit</button></section>';
+  var L=lkLines(m),X=lkXt(m),T=lkTx(m);
+  if((!L.length&&!X.length)||!T.length)return '';
+  if(!lk.on)return '<section class="card"><div class="grp"><b>Débit groupé ?</b></div><p class="small muted" style="margin:6px 0 12px">Plusieurs achats saisis à part (et extras prévus), payés en un seul débit Fortuneo : relie-les.</p><button class="btn" data-lk="open">Relier un débit</button></section>';
   var tx=T.filter(function(e){return e.id===lk.tx})[0];
   var h='<section class="card"><h2>1 · Choisir le débit</h2>'+T.map(function(e){
     return '<div class="todo tap'+(tx&&tx.id===e.id?' on':'')+'" role="button" data-lk="tx" data-id="'+e.id+'"><span><b>'+esc(e.label)+'</b><small class="muted">'+esc(e.date||'')+'</small></span><span class="n neg">'+fmt(e.amount)+'</span></div>'}).join('')+'</section>';
   if(tx){
-    var ids=Object.keys(lk.sel).filter(function(k){return lk.sel[k]}),tot=sum(L.filter(function(x){return lk.sel[x.id]}),function(x){return x.amount}),gap=Math.round((tx.amount-tot)*100)/100;
+    var ids=Object.keys(lk.sel).filter(function(k){return lk.sel[k]}),tot=sum(L.concat(X).filter(function(x){return lk.sel[x.id]}),lkA),gap=Math.round((tx.amount-tot)*100)/100;
     h+='<section class="card"><h2>2 · Cocher les achats</h2>'+L.map(function(x){
       return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">'+esc(x.date||'')+'</small></span><span class="n">'+fmt(x.amount)+'</span></div>'}).join('')+
+      (X.length?'<div class="grp" style="margin-top:14px"><b>Extras prévus</b></div>'+X.map(function(x){
+        return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">extra · prévu</small></span><span class="n">'+fmt(x.planned)+'</span></div>'}).join(''):'')+
       '<div class="brk"><div class="mini"><span>Achats cochés</span><span class="n">'+fmt(tot)+'</span></div><div class="mini"><span>Débit</span><span class="n">'+fmt(tx.amount)+'</span></div>'+
       '<div class="mini"><span>Écart</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(gap))+'</span></div></div>'+
-      (Math.abs(gap)>=0.015&&ids.length?'<p class="small muted" style="margin:8px 0 0">L’écart sera ajouté au dernier achat coché pour que le total colle au débit.</p>':'')+
+      (Math.abs(gap)>=0.015&&ids.length?'<p class="small muted" style="margin:8px 0 0">L’écart sera ajouté au dernier élément coché pour que le total colle au débit.</p>':'')+
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn primary" data-lk="ok"'+(ids.length?'':' disabled')+'>Valider le rapprochement</button><button class="btn" data-lk="cancel">Annuler</button></div></section>'}
   else h+='<button class="btn" data-lk="cancel">Annuler</button>';
   return h}
@@ -720,7 +724,7 @@ function vFix(m,c,xt){
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags">'+(NOTES[x.tid]?'<span class="tag tw">'+esc(NOTES[x.tid])+'</span>':'')+(fr?'<span class="tag tb">reportée de '+esc(ymLabel(fr))+'</span>':'')+(x.paid&&Math.abs(dv)>=0.5?'<span class="tag '+(dv>0?'tb':'tg')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</span>':'')+(x.bank?'<span class="tag tg">✓ Vu en banque</span>':'')+(!col&&bank.token&&bank.tx&&!fr?(x.bankId&&x.btx?'<button class="btn mini lnk" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini lnk" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div></div>'+
+        '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags">'+(NOTES[x.tid]?'<span class="tag tw">'+esc(NOTES[x.tid])+'</span>':'')+(fr?'<span class="tag tb">reportée de '+esc(ymLabel(fr))+'</span>':'')+(x.paid&&Math.abs(dv)>=0.5?'<span class="tag '+(dv>0?'tb':'tg')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</span>':'')+(x.bank?'<span class="tag tg">✓ Vu en banque</span>':'')+(x.grp?'<span class="tag tw">débit groupé</span>'+(!col&&bank.token?'<button class="btn mini lnk" data-lk="undo" data-id="'+x.id+'">Défaire le groupe</button>':''):'')+(!col&&bank.token&&bank.tx&&!fr&&!x.grp?(x.bankId&&x.btx?'<button class="btn mini lnk" data-fx="undo" data-id="'+x.id+'">Défaire le lien Fortuneo</button>':(!x.paid?'<button class="btn mini lnk" data-fx="open" data-id="'+x.id+'">Relier à Fortuneo</button>':'')):'')+'</div></div>'+
         '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
         '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>'+(fx.id===x.id?fxSheet(x,m):'');
       }).join('')+'</section>';
@@ -989,16 +993,19 @@ document.addEventListener('click',function(e){
   else if(a==='tx'){lk.tx=t.dataset.id;lk.sel={};var x=lkTx(m).filter(function(y){return y.id===lk.tx})[0],p=x&&lkPick(m,x.amount);(p||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tog'){lk.sel[t.dataset.id]=!lk.sel[t.dataset.id];render()}
   else if(a==='cancel'){lk={on:false,tx:null,sel:{}};render()}
-  else if(a==='undo'){var u=editM(ym),ux=findBy(u.extras,t.dataset.id);if(!ux||!ux.grp)return;var gid=ux.grp,bt=ux.btx;
+  else if(a==='undo'){var u=editM(ym),ux=findBy(u.extras,t.dataset.id)||findBy(u.fixed,t.dataset.id);if(!ux||!ux.grp)return;var gid=ux.grp,bt=ux.btx;
     u.extras.forEach(function(y){if(y.grp===gid){if(y.btx&&y.btx.o!=null)y.amount=y.btx.o;delete y.grp;delete y.btx}});
+    u.fixed.forEach(function(y){if(y.grp===gid){y.paid=false;y.bank=false;y.actual=(y.btx&&y.btx.o!=null)?y.btx.o:y.planned;delete y.grp;delete y.btx}});
     if(bt&&!u.extras.some(function(y){return y.bankId===gid}))u.extras.push({id:uid(),label:bt.l,cat:'Autre',amount:bt.a,date:bt.d,bankId:gid});
     u.del=(u.del||[]).filter(function(k){return k!=='b'+gid});commitM()}
   else if(a==='ok'){
     var mm=editM(ym),tx=mm.extras.filter(function(y){return y.id===lk.tx})[0];
-    var ls=mm.extras.filter(function(y){return lk.sel[y.id]&&!y.bankId&&!y.grp});if(!tx||!ls.length)return;
-    var tot=sum(ls,function(y){return y.amount}),gap=Math.round((tx.amount-tot)*100)/100;
+    var ls=mm.extras.filter(function(y){return lk.sel[y.id]&&!y.bankId&&!y.grp}),xs=mm.fixed.filter(function(y){return lk.sel[y.id]&&isX(y)&&!y.paid&&!y.grp});if(!tx||!(ls.length+xs.length))return;
+    var tot=sum(ls,function(y){return y.amount})+sum(xs,function(y){return y.planned}),gap=Math.round((tx.amount-tot)*100)/100;
     ls.forEach(function(y){y.grp=tx.bankId;y.btx={l:tx.label,a:tx.amount,d:tx.date,o:y.amount}});
-    var last=ls[ls.length-1];last.amount=Math.round((last.amount+gap)*100)/100;
+    xs.forEach(function(y){y.grp=tx.bankId;y.btx={l:tx.label,a:tx.amount,d:tx.date,o:y.planned};y.paid=true;y.bank=true;y.actual=y.planned});
+    if(ls.length){var last=ls[ls.length-1];last.amount=Math.round((last.amount+gap)*100)/100}
+    else{var lx=xs[xs.length-1];lx.actual=Math.round((lx.actual+gap)*100)/100}
     mm.del=(mm.del||[]).concat([syKey(tx,'extras')]).slice(-300);
     mm.extras=mm.extras.filter(function(y){return y.id!==tx.id});
     lk={on:false,tx:null,sel:{}};commitM()}
