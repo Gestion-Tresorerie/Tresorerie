@@ -172,7 +172,7 @@ var LS='budget-foyer-v1';
 var NOTES={'internet':'Avancé par Hasina : réglé quand le virement est fait sur son compte','tel-enfant':'Avancé par Hasina : réglé quand le virement est fait sur son compte'};
 var d0=new Date();
 var ym=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');
-var state={config:{contributors:['Hasina','Linda'],courses:500,fixed:[],credits:[],incomes:[3322.64,1550],firstPayment:1700,salaryFirst:2500},months:{},tab:'synthese',status:'loading'};
+var state={config:{contributors:['Hasina','Linda'],courses:500,resto:60,fixed:[],credits:[],incomes:[3322.64,1550],firstPayment:1700,salaryFirst:2500},months:{},tab:'synthese',status:'loading'};
 var virt={}; var col=null;
 var timers={},busy={},dirty={};
 
@@ -182,7 +182,7 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 function normCfg(d){
   var c=clone(d||{});
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
-    courses:typeof c.courses==='number'?c.courses:500,
+    courses:typeof c.courses==='number'?c.courses:500, resto:typeof c.resto==='number'?c.resto:60,
     fixed:Array.isArray(c.fixed)?c.fixed:[], credits:Array.isArray(c.credits)?c.credits:[],
     incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3322.64,1550],
     firstPayment:typeof c.firstPayment==='number'?c.firstPayment:1700,salaryFirst:typeof c.salaryFirst==='number'?c.salaryFirst:2500};
@@ -484,6 +484,7 @@ function vFix(m,c){
       '<button class="btn primary full" type="submit">Ajouter</button></form></section>';
 }
 
+function restoOf(m){return typeof m.resto==='number'?m.resto:(typeof state.config.resto==='number'?state.config.resto:60)}
 function vDep(m,c){
   var today=d0.toISOString().slice(0,10); var def=today.slice(0,7)===ym?today:ym+'-01';
   var ex=m.extras.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
@@ -494,7 +495,9 @@ function vDep(m,c){
   }).join('');
   return '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
     '<div class="line" style="border:0"><span class="small muted">Dépensé / enveloppe du mois</span>'+
-    '<span class="n small">'+fmt(c.coursesSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-courses="1" value="'+inp(c.coursesPlanned)+'" aria-label="Enveloppe courses"></span></div></section>'+
+    '<span class="n small">'+fmt(c.coursesSpent)+' / <input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-courses="1" value="'+inp(c.coursesPlanned)+'" aria-label="Enveloppe courses"></span></div>'+
+    '<div class="line"><span class="small muted">Tickets resto <span class="muted">(en plus, hors PAF)</span></span>'+
+    '<span class="n small"><input class="num" style="width:84px;display:inline-block" inputmode="decimal" data-resto="1" value="'+inp(restoOf(m))+'" aria-label="Tickets resto"></span></div></section>'+
     '<section class="card"><h2>Ajouter une dépense</h2><form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
       '<select name="cat" aria-label="Catégorie">'+copts+'</select>'+
@@ -537,6 +540,7 @@ function vModel(){
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
       '<button class="btn primary full" type="submit">Ajouter au modèle</button></form></section>'+
     '<section class="card"><h2>Enveloppe courses par défaut</h2><input class="num" inputmode="decimal" data-cfgcourses="1" value="'+inp(cfg.courses)+'" aria-label="Enveloppe courses par défaut"></section>'+
+    '<section class="card"><h2>Tickets resto par défaut</h2><p class="small muted" style="margin:0 0 10px">Budget en plus des courses, non déduit des PAF. Modifiable chaque mois dans l’onglet Dépenses.</p><input class="num" inputmode="decimal" data-cfgresto="1" value="'+inp(cfg.resto)+'" aria-label="Tickets resto par défaut"></section>'+
     '<section class="card"><h2>Ce mois-ci</h2><p class="small muted" style="margin:0 0 10px">Les changements du modèle s’appliquent aux mois non encore modifiés. Pour un mois déjà commencé, ajoute les lignes manquantes :</p>'+
       '<button class="btn" data-act="applytpl">Ajouter les lignes du modèle manquantes à '+esc(ymLabel(ym))+'</button></section>'+
     '<section class="card"><h2>Sauvegarde</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="copybk">Copier la sauvegarde</button><button class="btn" data-act="restore">Restaurer depuis le texte</button></div>'+
@@ -626,6 +630,8 @@ document.addEventListener('change',function(e){
   else if(el.dataset.income!==undefined){state.config.incomes[+el.dataset.income]=num(el.value);commitCfg()}
   else if(el.dataset.firstpay){state.config.firstPayment=num(el.value);commitCfg()}
   else if(el.dataset.salfirst){state.config.salaryFirst=num(el.value);commitCfg()}
+  else if(el.dataset.cfgresto){state.config.resto=num(el.value);commitCfg()}
+  else if(el.dataset.resto){var m5=editM(ym);m5.resto=num(el.value);commitM()}
   else if(el.dataset.cfgcourses){state.config.courses=num(el.value);commitCfg()}
   else if(el.dataset.courses){var m4=editM(ym);m4.courses.planned=num(el.value);commitM()}
 });
