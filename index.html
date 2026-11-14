@@ -169,7 +169,7 @@ var LS='budget-foyer-v1';
 
 var d0=new Date();
 var ym=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');
-var state={config:{contributors:['Hasina','Linda'],courses:500,fixed:[],credits:[],incomes:[0,0],firstPayment:2000},months:{},tab:'synthese',status:'loading'};
+var state={config:{contributors:['Hasina','Linda'],courses:500,fixed:[],credits:[],incomes:[3322.64,1550],firstPayment:2000},months:{},tab:'synthese',status:'loading'};
 var virt={}; var col=null;
 var timers={},busy={},dirty={};
 
@@ -181,7 +181,7 @@ function normCfg(d){
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
     courses:typeof c.courses==='number'?c.courses:500,
     fixed:Array.isArray(c.fixed)?c.fixed:[], credits:Array.isArray(c.credits)?c.credits:[],
-    incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[0,0],
+    incomes:Array.isArray(c.incomes)?[num(c.incomes[0]),num(c.incomes[1])]:[3322.64,1550],
     firstPayment:typeof c.firstPayment==='number'?c.firstPayment:2000};
 }
 function normMonth(d,key){
