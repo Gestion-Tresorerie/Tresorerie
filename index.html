@@ -630,6 +630,7 @@ document.addEventListener('submit',function(e){
 function bkNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()}
 var BK_FIX=[['tel-enfant',/TELEPHONE|TEL RAF|RAFAELLE.*BOUYGUES|BOUYGUES.*RAFAELLE/],['internet',/BOUYGUES|INTERNET|BBOX/],['loyer',/BL0945895|NEXITY|LOYER/],['credit-regroupe',/CA CONSUMER|CONSUMER FINANCE|CREDIT REGROUPE/],['leasing',/VOLKSWAGEN/],['ass-tcross',/TCROSS|T-CROSS|T CROSS/],['ass-bmw',/\bAXA\b/],['ass-hab',/ACHEEL/],['elec',/TOTAL ?ENERGIES|ELECTRICITE/],['cantine',/DDFIP|PRESTO|\bSGC\b|REST\.? ?SCOLAIRE|ALSH|CANTINE/],['musique',/CONSERVATOIRE|HECTOR/],['tresorerie',/SAKAFO|DADA|TRESO/]];
 var BK_CAT=[['Courses',/SODISCA|AUCHAN|LIDL|CARREFOUR|SUPER U|MONOPRIX|ALDI|INTERMARCHE|GRAND FRAIS|CASINO|BOULANGERIE|MARCHE|COURSES|PARIS STORE|FRANPRIX|BIOCOOP|SOLIBE/],['Santé',/PHARM|DOCTEUR|\bDR\b|ORTHO|CLINIQUE|OPHTAL|DOCTOLIB|RADIO|NOVEOC|CPAM|MEDECIN|LABORATOIRE/],['Transport',/\bTAM\b|VOIRIE|STATIONNEMENT|PARK|PEAGE|CARBURANT|STATION|SNCF|UBER/],['Enfants & école',/ECOLE|COLLEGE|PHOTO|SCOLAIRE/],['Loisirs',/RESTAU|CINE|AMIKADO|NETFLIX|SPOTIFY|BETM|ACTION|FNAC|AMAZON|KAYAK/]];
+var BK_PART={loyer:1},BK_BACK={cantine:1};
 var BK_MONTHS={JANV:1,JANVIER:1,FEV:2,FEVR:2,FEVRIER:2,MARS:3,AVR:4,AVRIL:4,MAI:5,JUIN:6,JUIL:7,JUILLET:7,AOUT:8,SEPT:9,SEPTEMBRE:9,OCT:10,OCTT:10,OCTOBRE:10,NOV:11,NOVEMBRE:11,DEC:12,DECEMBRE:12};
 function bkMonthKey(t){
   var d=t.date||'',base=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(base))return null;
@@ -662,14 +663,20 @@ function bankSync(){
     var m=editM(key);m.bankSeen=m.bankSeen||{};m.bankSeen[t.id]=1;touched[key]=1;
     var c=bkClassify(t),amt=Math.abs(t.amount),done=false,i;
     if(c.k==='fixed'){
-      for(i=0;i<m.fixed.length;i++)if(m.fixed[i].tid===c.tid&&!m.fixed[i].paid){m.fixed[i].paid=true;m.fixed[i].actual=amt;m.fixed[i].bank=true;s.ticked++;done=true;break}
+      var ord=BK_BACK[c.tid]?Object.keys(state.months).filter(function(k){return k>='2026-10'&&k<=key}).sort():[key],tg=null,oi,mm;
+      for(oi=0;oi<ord.length&&!tg;oi++){mm=(ord[oi]===key)?m:editM(ord[oi]);for(i=0;i<mm.fixed.length;i++)if(mm.fixed[i].tid===c.tid&&!mm.fixed[i].paid){tg=mm.fixed[i];touched[ord[oi]]=1;break}}
+      if(tg){
+        if(BK_PART[c.tid]&&tg.planned-amt>0.5){mm.fixed.push({id:uid(),tid:tg.tid,label:/\(solde\)/.test(tg.label)?tg.label:tg.label+' (solde)',group:tg.group,planned:Math.round((tg.planned-amt)*100)/100,actual:Math.round((tg.planned-amt)*100)/100,paid:false});tg.planned=amt}
+        tg.paid=true;tg.actual=amt;tg.bank=true;s.ticked++;done=true}
       if(!done)c={k:'extra',cat:'Autre'};
     }else if(c.k==='paf'){
       var cr=null;
       for(i=0;i<m.credits.length&&!cr;i++){var x=m.credits[i];if(x.done)continue;
         if(c.who==='Linda'&&x.kind==='paf'&&x.who==='Linda')cr=x;
         else if(c.who==='Hasina'&&(x.kind==='paf1'||x.kind==='paf2'))cr=x}
-      if(cr){cr.done=true;cr.actual=amt;cr.bank=true;s.pafs++;done=true}else c={k:'credit'};
+      if(cr){cr.done=true;cr.actual=amt;cr.bank=true;s.pafs++;done=true}
+      else{var last=null;m.credits.forEach(function(y){if(c.who==='Linda'?(y.kind==='paf'&&y.who==='Linda'):y.kind==='paf2')last=y});
+        if(last&&last.done){last.actual=Math.round(((last.actual||0)+amt)*100)/100;last.bank=true;s.pafs++;done=true}else c={k:'credit'}};
     }
     if(!done&&c.k==='credit'){m.credits.push({id:uid(),label:String(t.label||'Crédit').slice(0,48),who:'Autre',planned:amt,actual:amt,done:true,kind:null,bank:true});s.credits++}
     else if(!done&&c.k==='extra'){m.extras.push({id:uid(),label:String(t.label||'Dépense').slice(0,48),cat:c.cat,amount:amt,date:t.date,bankId:t.id});s.extras++}
@@ -781,7 +788,13 @@ document.addEventListener('submit',function(e){
   else if(k==='cfg-credit'){state.config.credits.push({id:uid(),label:label,who:fd.get('who'),amount:amount});commitCfg()}
 });
 
-loadLocal();applySeed();applyModel();
+function bankFix1(){try{if(localStorage.getItem('budget-fix-v')==='1')return;
+  Object.keys(state.months).forEach(function(k){var m=state.months[k],add=[];if(!m||!m.fixed)return;
+    m.fixed.forEach(function(x){if(x.tid==='loyer'&&x.bank&&x.paid&&x.planned-x.actual>0.5){var r=Math.round((x.planned-x.actual)*100)/100;add.push({id:uid(),tid:'loyer',label:x.label+' (solde)',group:x.group,planned:r,actual:r,paid:false});x.planned=x.actual}});
+    if(k==='2026-10'&&!m.fixed.some(function(x){return x.tid==='cantine'||/cantine/i.test(x.label||'')}))add.push({id:uid(),tid:'cantine',label:'Cantine + accueil primaire',group:'Enfants & école',planned:209.22,actual:209.22,paid:false});
+    if(add.length){m.fixed=m.fixed.concat(add);touch('m-'+k)}});
+  localStorage.setItem('budget-fix-v','1');persistLocal()}catch(e){}}
+loadLocal();applySeed();applyModel();bankFix1();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
 if(bank.token)bankLoad();
