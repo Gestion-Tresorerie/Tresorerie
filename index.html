@@ -297,6 +297,7 @@ input.num:focus,input[name=amount]:focus{background:color-mix(in srgb,var(--ink)
 .adb{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
 .ad .adbody{margin-top:12px}.ad:not(.open) .adbody{display:none}
 .card.ad{padding-top:12px;padding-bottom:12px}.card.ad.open{padding-bottom:16px}
+.adin{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 </style>
 </head>
 <body>
@@ -386,6 +387,7 @@ function build(key){
 function tplEnd(t){return t.from&&t.months?shiftYm(t.from,t.months-1):null}
 function tplOn(t,key){return !t.from||(key>=t.from&&(!t.months||key<=tplEnd(t)))}
 var fxAdd=false;
+function adIn(t){return '<div class="ad adin"><button type="button" class="adh" data-ad="pot" aria-expanded="false"><span>'+t+'</span><span class="adb" aria-hidden="true">+</span></button><div class="adbody">'}
 function adOpen(k,t,o){return '<section class="card ad'+(o?' open':'')+'"><button type="button" class="adh" data-ad="'+k+'" aria-expanded="'+(o?'true':'false')+'"><span>'+t+'</span><span class="adb" aria-hidden="true">'+(o?'×':'+')+'</span></button><div class="adbody">'}
 document.addEventListener('click',function(e){var b=e.target.closest('[data-ad]');if(!b||b.disabled)return;var c=b.closest('.ad'),o=c.classList.toggle('open');b.setAttribute('aria-expanded',o?'true':'false');b.querySelector('.adb').textContent=o?'×':'+';if(o){var i=c.querySelector('input:not([type=hidden])');if(i)i.focus()}});
 function getM(key){return state.months[key]||virt[key]||(virt[key]=build(key))}
@@ -1217,12 +1219,12 @@ function vNous(m,c){
     var ents=adj.sort(function(a,b){return String(b.date).localeCompare(String(a.date))}).slice(0,8).map(function(e){
       return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span></span></span><span class="n '+(e.amount<0?'neg':'pos')+'">'+sgn(e.amount)+' <button class="x" data-ns="pdel" data-pid="'+esc(t.id)+'" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
     return '<section class="card"><h2>Cagnotte · '+esc(t.label)+'</h2><div class="big '+(run<0?'neg':'')+'" style="font-size:28px">'+fmt(run)+'</div><div class="small muted" style="margin:4px 0 8px">Versements cochés payés − retraits · Mois : versé · retrait · solde</div>'+(tr||'<div class="empty">Aucun versement pour l’instant.</div>')+
-      '<div class="grp" style="margin-top:14px"><b>Retirer / ajouter</b></div><form class="form" data-form="ns-pot"><input type="hidden" name="pid" value="'+esc(t.id)+'">'+
+      adIn('Retirer / ajouter')+'<form class="form" data-form="ns-pot"><input type="hidden" name="pid" value="'+esc(t.id)+'">'+
       '<select name="kind" aria-label="Type"><option value="out">Retrait (utilisé)</option><option value="in">Ajout (correction)</option></select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
       '<input type="text" name="label" placeholder="Libellé (ex. courses école)" required class="full" aria-label="Libellé">'+
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
-      '<button class="btn primary add" type="submit">Enregistrer</button></form>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
+      '<button class="btn primary add" type="submit">Enregistrer</button></form></div></div>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
   return head+list+form+(pots||'<section class="card"><h2>Cagnottes famille</h2><div class="empty">Aucune charge fixe suivie dans le groupe « Famille ».</div></section>');
 }
 var anLast={};
