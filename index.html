@@ -583,13 +583,14 @@ function vFix(m,c){
   var html=groups.map(function(g){
     var items=m.fixed.filter(function(x){return x.group===g}); if(!items.length)return '';
     var tp=sum(items,function(x){return x.planned});
-    return '<section class="card"><div class="grp"><b>'+esc(g)+'</b><span class="n">'+fmt(tp)+'</span></div>'+
+    return '<section class="card"><div class="grp"><b>'+esc(g)+'</b><span class="n">'+fmt(tp)+' <button class="btn" style="padding:2px 10px;margin-left:6px" data-lk="qa" data-g="'+esc(g)+'" aria-label="Ajouter une ligne">'+(lk.qa===g?'×':'+')+'</button></span></div>'+
+      (lk.qa===g?'<form class="form" data-form="add-fixed" style="margin:8px 0 4px"><input type="hidden" name="group" value="'+esc(g)+'"><input type="text" name="label" placeholder="Achat (ex. Invitation Manon)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary" type="submit">Ajouter</button></form>':'')+
       items.map(function(x){
         var dv=x.paid?x.actual-x.planned:0;
         var fr=m.carry&&m.carry[x.id],fa=fr?' data-from="'+fr+'"':'';
         return '<div class="row'+(x.paid?' is-done':'')+'">'+
         '<label class="chk"><input type="checkbox" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="paid"'+(x.paid?' checked':'')+' aria-label="Payé"><span></span></label>'+
-        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque'+(function(){var n=x.bankId?m.fixed.filter(function(y){return y.bankId===x.bankId}).length:0;return n>1?' · débit groupé ('+n+' lignes)':''})()+'</small>':'')+'</div>'+
+        '<div class="t">'+esc(x.label)+(NOTES[x.tid]?'<small class="muted">'+esc(NOTES[x.tid])+'</small>':'')+(fr?'<small class="neg">reportée de '+esc(ymLabel(fr))+'</small>':'')+(x.paid&&Math.abs(dv)>=0.5?'<small class="'+(dv>0?'neg':'pos')+'">Prévu '+fmt(x.planned)+' · '+sgn(dv)+'</small>':'')+(x.bank?'<small class="muted">Vu en banque'+(function(){var n=x.bankId?m.fixed.filter(function(y){return y.bankId===x.bankId}).length:0;return n>1?' · débit groupé ('+n+' lignes)':''})()+'</small>':'')+(x.bankId&&x.btx?'<button class="btn" style="padding:2px 10px;margin-top:6px" data-lk="undo" data-id="'+x.id+'">Défaire le rapprochement</button>':'')+'</div>'+
         '<input class="num" inputmode="decimal" data-list="fixed" data-id="'+x.id+'"'+fa+' data-f="'+(x.paid?'actual':'planned')+'" data-n="1" value="'+inp(x.paid?x.actual:x.planned)+'" aria-label="Montant">'+
         '<button class="x" data-act="del" data-list="fixed" data-id="'+x.id+'"'+fa+' aria-label="Supprimer">×</button></div>';
       }).join('')+'</section>';
@@ -761,11 +762,16 @@ document.addEventListener('click',function(e){
   else if(a==='tx'){lk.tx=t.dataset.id;lk.sel={};var x=lkTx(m).filter(function(y){return y.id===lk.tx})[0],p=x&&lkPick(m,x.amount);(p||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tog'){lk.sel[t.dataset.id]=!lk.sel[t.dataset.id];render()}
   else if(a==='cancel'){lk={on:false,tx:null,sel:{}};render()}
+  else if(a==='qa'){lk.qa=(lk.qa===t.dataset.g)?null:t.dataset.g;render()}
+  else if(a==='undo'){var u=editM(ym),ux=findBy(u.fixed,t.dataset.id);if(!ux||!ux.bankId)return;var bid=ux.bankId,bt=ux.btx;
+    u.fixed.forEach(function(y){if(y.bankId===bid){y.paid=false;y.actual=y.planned;y.bank=false;delete y.bankId;delete y.btx}});
+    if(bt&&!u.extras.some(function(y){return y.bankId===bid}))u.extras.push({id:uid(),label:bt.l,cat:'Autre',amount:bt.a,date:bt.d,bankId:bid});
+    u.del=(u.del||[]).filter(function(k){return k!=='b'+bid});commitM()}
   else if(a==='ok'){
     var mm=editM(ym),tx=mm.extras.filter(function(y){return y.id===lk.tx})[0];
     var ls=mm.fixed.filter(function(y){return lk.sel[y.id]&&!y.paid});if(!tx||!ls.length)return;
     var tot=sum(ls,function(y){return y.planned}),gap=Math.round((tx.amount-tot)*100)/100;
-    ls.forEach(function(y){y.paid=true;y.actual=y.planned;y.bank=true;y.bankId=tx.bankId});
+    ls.forEach(function(y){y.paid=true;y.actual=y.planned;y.bank=true;y.bankId=tx.bankId;y.btx={l:tx.label,a:tx.amount,d:tx.date}});
     var last=ls[ls.length-1];last.actual=Math.round((last.planned+gap)*100)/100;
     mm.del=(mm.del||[]).concat([syKey(tx,'extras')]).slice(-300);
     mm.extras=mm.extras.filter(function(y){return y.id!==tx.id});
