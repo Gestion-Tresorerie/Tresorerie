@@ -229,13 +229,14 @@ input.num{font-size:16px;padding:11px 10px}
 .syn.an .rp{animation:rg 1.3s cubic-bezier(.2,.8,.2,1) .2s both}
 }
 
-/* En-tête compact : logo | mois | statut, répartis également */
-.head{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.head .brand,.head #status{flex:none}
-.head .monthnav{gap:0}
-.head .monthnav .ib{width:36px;height:40px}
-.head .monthnav h1{min-width:0;padding:0 4px;white-space:nowrap;font-size:16px}
-.head #status{max-width:none;font-size:12px;padding:6px 10px;line-height:1.2}
+/* En-tête : logo | mois (centré, largeur fixe) | statut */
+.head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding:10px 16px}
+.head .brand{justify-self:start;align-self:center;line-height:0}
+.head .brand img{display:block;margin-left:-6px}
+.head .monthnav{justify-self:center;gap:0}
+.head .monthnav .ib{width:34px;height:40px;flex:none}
+.head .monthnav h1{width:114px;min-width:0;padding:0;white-space:nowrap;font-size:15px;line-height:1;text-align:center}
+.head #status{justify-self:end;max-width:100%;min-width:0;font-size:11.5px;padding:6px 8px;line-height:1.2;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
