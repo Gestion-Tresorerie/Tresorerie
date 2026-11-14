@@ -347,9 +347,12 @@ function build(key){
   var c=state.config;
   return {ym:key,courses:{planned:c.courses},
     credits:c.credits.map(function(t){return {id:uid(),tid:t.id,label:t.label,who:t.who,planned:t.amount||0,actual:t.kind?null:t.amount,done:false,kind:t.kind||null}}),
-    fixed:c.fixed.map(function(t){return {id:uid(),tid:t.id,label:t.label,group:t.group,planned:t.amount,actual:t.amount,paid:false}}),
+    fixed:c.fixed.filter(function(t){return tplOn(t,key)}).map(function(t){return {id:uid(),tid:t.id,label:t.label,group:t.group,planned:t.amount,actual:t.amount,paid:false}}),
     extras:[]};
 }
+function tplEnd(t){return t.from&&t.months?shiftYm(t.from,t.months-1):null}
+function tplOn(t,key){return !t.from||(key>=t.from&&(!t.months||key<=tplEnd(t)))}
+var fxAdd=false;
 function getM(key){return state.months[key]||virt[key]||(virt[key]=build(key))}
 function editM(key){
   if(!state.months[key]){state.months[key]=virt[key]||build(key);delete virt[key]}
@@ -740,7 +743,13 @@ function vFix(m,c,xt){
       '<input type="hidden" name="group" value="Extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></section>':'<p class="small muted" style="margin:4px 2px">Charges ponctuelles : onglet Extra. Charges permanentes : onglet Modèle.</p>');
+      '<button class="btn primary add" type="submit">Ajouter</button></form></section>':(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
+      '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
+      '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
+      '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
+      '<input type="text" name="months" inputmode="numeric" placeholder="Durée (mois) — vide = sans fin" class="full" aria-label="Durée en mois">'+
+      '<button class="btn primary add" type="submit">Ajouter</button> <button class="btn" type="button" data-fx="addtog">Annuler</button></form></section>':
+      '<button class="btn" data-fx="addtog" style="margin:2px 0 10px">+ Charge fixe (plusieurs mois)</button>')+'<p class="small muted" style="margin:4px 2px">Charges ponctuelles : onglet Extra.</p>');
 }
 
 function restoOf(m){return typeof m.resto==='number'?m.resto:(typeof state.config.resto==='number'?state.config.resto:60)}
@@ -777,7 +786,7 @@ function vModel(){
     return '<div class="cfgrow fx"><input type="text" data-cfg="fixed" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé">'+
       '<select data-cfg="fixed" data-id="'+t.id+'" data-f="group" aria-label="Groupe">'+gopts(t.group)+'</select>'+
       '<input class="num" inputmode="decimal" data-cfg="fixed" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant">'+
-      '<button class="x" data-act="cfgdel" data-list="fixed" data-id="'+t.id+'" aria-label="Supprimer">×</button></div>';
+      '<button class="x" data-act="cfgdel" data-list="fixed" data-id="'+t.id+'" aria-label="Supprimer">×</button></div>'+(t.from&&t.months?'<div class="small muted" style="margin:-2px 0 8px 4px">'+t.months+' mois : '+esc(ymLabel(t.from))+' → '+esc(ymLabel(tplEnd(t)))+'</div>':(t.from?'<div class="small muted" style="margin:-2px 0 8px 4px">Depuis '+esc(ymLabel(t.from))+' · sans fin</div>':''));
   }).join('');
   var cr=cfg.credits.map(function(t){
     return '<div class="cfgrow fx"><input type="text" data-cfg="credits" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé">'+
@@ -946,6 +955,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('[data-fx]');if(!t)return;var a=t.dataset.fx;
   if(a==='open'){fx.id=(fx.id===t.dataset.id)?null:t.dataset.id;render()}
   else if(a==='close'){fx.id=null;render()}
+  else if(a==='addtog'){fxAdd=!fxAdd;render()}
   else if(a==='tofix'||a==='toxtra'){var mq=editM(ym),xq=findBy(mq.fixed,t.dataset.id);if(!xq)return;
     if(a==='tofix'){xq.xtra=false;if(GROUPS.indexOf(xq.group)<0)xq.group='Divers'}else{xq.xtra=true;xq.group='Extra'}
     fx.id=null;commitM()}
@@ -1175,7 +1185,7 @@ document.addEventListener('click',function(e){
     var have=function(arr){var s={};arr.forEach(function(x){if(x.tid)s[x.tid]=1});return s};
     var hc=have(m2.credits),hf=have(m2.fixed);
     c.credits.forEach(function(tp){if(!hc[tp.id])m2.credits.push({id:uid(),tid:tp.id,label:tp.label,who:tp.who,planned:tp.amount||0,actual:tp.kind?null:tp.amount,done:false,kind:tp.kind||null})});
-    c.fixed.forEach(function(tp){if(!hf[tp.id])m2.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false})});
+    c.fixed.filter(function(tp){return tplOn(tp,ym)}).forEach(function(tp){if(!hf[tp.id])m2.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false})});
     m2.del=(m2.del||[]).filter(function(k){return !c.fixed.concat(c.credits).some(function(tp){return k===tp.id+'|'+tp.label})});
     commitM(); state.tab='fixes'; render();
   }
@@ -1241,6 +1251,11 @@ document.addEventListener('submit',function(e){
   if(k==='add-fixed'){editM(ym).fixed.push({id:uid(),label:label,group:fd.get('group'),planned:amount,actual:amount,paid:false});commitM()}
   else if(k==='add-credit'){editM(ym).credits.push({id:uid(),label:label,who:fd.get('who'),planned:amount,actual:amount,done:false});commitM()}
   else if(k==='add-extra'){editM(ym).extras.push({id:uid(),label:label,cat:fd.get('cat'),amount:amount,date:fd.get('date')});commitM()}
+  else if(k==='add-rec'){var nm=Math.floor(num(fd.get('months')));nm=nm>0?nm:null;
+    var tp={id:uid(),label:label,group:fd.get('group'),amount:amount,from:ym,months:nm};state.config.fixed.push(tp);
+    var ks={};ks[ym]=1;Object.keys(state.months).forEach(function(q){if(tplOn(tp,q))ks[q]=1});
+    Object.keys(ks).forEach(function(q){if(!tplOn(tp,q))return;var mq=editM(q);if(!mq.fixed.some(function(y){return y.tid===tp.id}))mq.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false});touch('m-'+q)});
+    fxAdd=false;resetVirt();touch('config');render()}
   else if(k==='cfg-fixed'){state.config.fixed.push({id:uid(),label:label,group:fd.get('group'),amount:amount});commitCfg()}
   else if(k==='cfg-credit'){state.config.credits.push({id:uid(),label:label,who:fd.get('who'),amount:amount});commitCfg()}
 });
