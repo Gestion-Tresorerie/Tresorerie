@@ -464,7 +464,8 @@ function vSynth(m,c){
     '<div class="small muted" style="margin-top:8px">Résultat si chacun verse sa part complète.</div></section>'+
   vTodo(m,c)+
   '<div class="grid2">'+
-    '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div><div class="s">reçu − payé − dépensé</div></div>'+
+    (function(){var b=!col&&bank.bal;
+      return '<div class="kpi"><div class="l">Solde Fortuneo</div>'+(b?'<div class="v '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div><div class="s">'+(b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'')+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'<div class="v muted">—</div><div class="s">'+(bank.token?'Actualise dans l’onglet Banque':'Connexion Fortuneo requise')+'</div>')+'</div>'})()+
     '<div class="kpi tap" role="button" data-act="tab" data-tab="fixes"><div class="l">Reste à payer</div><div class="v">'+fmt(c.fixedRemain)+'</div><div class="s">'+unpaid+' charge'+(unpaid>1?'s':'')+' non cochée'+(unpaid>1?'s':'')+'</div></div>'+
     '<div class="kpi wide tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses du mois (courses + autres)</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
@@ -683,7 +684,7 @@ function vModel(){
 /* ---------- Banque (Fortuneo via passerelle Cloudflare) ---------- */
 var BANK_API='https://budget-bank.hasina-rasolo.workers.dev';
 var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false,sum:null};
-try{bank.token=localStorage.getItem('budget-bank-token')||null}catch(e){}
+try{bank.token=localStorage.getItem('budget-bank-token')||null;bank.bal=JSON.parse(localStorage.getItem('budget-bank-bal')||'null')}catch(e){}
 function bankCall(path,opts){
   opts=opts||{};var h={'Content-Type':'application/json'};if(bank.token)h.Authorization='Bearer '+bank.token;
   opts.headers=h;
@@ -700,7 +701,7 @@ function bankTx(force){
   bank.busy=true;render();
   bankCall('/transactions'+(force?'?refresh=1':'')).then(function(x){
     bank.busy=false;
-    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
+    if(x.ok){bank.tx=x.d.transactions||[];bank.fetched=x.d.fetched_at;bank.msg='';if(x.d.balance&&typeof x.d.balance.amount==='number'){bank.bal={amount:x.d.balance.amount,date:x.d.balance.date||null,at:x.d.fetched_at||new Date().toISOString()};try{localStorage.setItem('budget-bank-bal',JSON.stringify(bank.bal))}catch(e){}}try{bank.sum=bankSync()}catch(e){bank.sum=null;bank.msg='Rapprochement impossible : '+e.message}}
     else bank.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement bancaire a expiré : reconnecte Fortuneo.':'Impossible de récupérer les transactions ('+(x.d&&x.d.error||x.status)+').';
     render()}).catch(bankFail);
 }
