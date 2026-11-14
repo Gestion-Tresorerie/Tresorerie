@@ -692,10 +692,11 @@ function vHist(){
     return '<div class="empty card">L’historique se remplit au fil des mois : coche un paiement ou ajoute une dépense pour enregistrer le mois en cours.</div>';
   }
   var rec=st.slice(-12);
-  var closed=st.filter(function(r){return !r.open});
-  var tot={rev:sum(st,function(r){return r.c.creditsReal}),fix:sum(st,function(r){return r.c.fixedPaid}),ext:sum(st,function(r){return r.c.extrasTotal}),bal:sum(closed,function(r){return hval(r)})};
+  var YR=CUR.slice(0,4),sy=st.filter(function(r){return r.k.slice(0,4)===YR});
+  var closed=sy.filter(function(r){return !r.open});
+  var tot={rev:sum(sy,function(r){return r.c.creditsReal}),fix:sum(sy,function(r){return r.c.fixedPaid}),ext:sum(sy,function(r){return r.c.extrasTotal}),bal:sum(closed,function(r){return hval(r)})};
   var avg=closed.length?sum(closed,function(r){return hval(r)})/closed.length:null;
-  var cats={};st.forEach(function(r){r.m.extras.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.amount})});
+  var cats={};sy.forEach(function(r){r.m.extras.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.amount})});
   var catRows=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a]});
   var cmax=catRows.length?cats[catRows[0]]:0;
   var list=rows.slice().reverse().map(function(r){
@@ -708,10 +709,10 @@ function vHist(){
   return '<section class="card"><h2>Solde réel par mois</h2>'+hChart(rec)+
       '<div class="small muted">Barres au-dessus de la ligne : mois excédentaire. Échelle : de '+sgn(Math.min.apply(null,rec.map(function(r){return hval(r)}).concat([0])))+' à '+sgn(Math.max.apply(null,rec.map(function(r){return hval(r)}).concat([0])))+'.</div></section>'+
     '<div class="grid2">'+
-      '<div class="kpi"><div class="l">Solde cumulé ('+closed.length+' mois clos)</div><div class="v '+(tot.bal>=0?'pos':'neg')+'">'+sgn(tot.bal)+'</div></div>'+
-      '<div class="kpi"><div class="l">Moyenne mois clos</div><div class="v">'+(avg===null?'—':sgn(avg))+'</div></div>'+
-      '<div class="kpi"><div class="l">Revenus reçus</div><div class="v">'+fmt(tot.rev)+'</div></div>'+
-      '<div class="kpi"><div class="l">Dépenses libres</div><div class="v">'+fmt(tot.ext)+'</div></div>'+
+      '<div class="kpi"><div class="l">Solde cumulé '+YR+' ('+closed.length+' mois clos)</div><div class="v '+(tot.bal>=0?'pos':'neg')+'">'+sgn(tot.bal)+'</div></div>'+
+      '<div class="kpi"><div class="l">Moyenne mois clos '+YR+'</div><div class="v">'+(avg===null?'—':sgn(avg))+'</div></div>'+
+      '<div class="kpi"><div class="l">Revenus reçus '+YR+'</div><div class="v">'+fmt(tot.rev)+'</div></div>'+
+      '<div class="kpi"><div class="l">Dépenses libres '+YR+'</div><div class="v">'+fmt(tot.ext)+'</div></div>'+
     '</div>'+
     (catRows.length?'<section class="card"><h2>Dépenses libres par catégorie</h2>'+catRows.map(function(k){return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(k)+'</span><span class="n">'+fmt(cats[k])+'</span></div>'+bar(cats[k],cmax)+'</div>'}).join('')+'</section>':'')+
     '<section class="card"><h2>Mois par mois</h2><div style="display:flex;flex-direction:column;gap:8px">'+list+'</div><p class="small muted" style="margin:10px 0 0">Touche un mois pour ouvrir sa synthèse.</p></section>';
