@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <script src="gate.js"></script>
+<script src="seed.js"></script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0f1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -277,6 +278,7 @@ function loadLocal(){
     if(o.months)Object.keys(o.months).forEach(function(k){state.months[k]=normMonth(o.months[k],k)});
   }catch(e){}
 }
+function applySeed(){try{var s=window.BUDGET_SEED,add=0;if(!s)return;Object.keys(s).forEach(function(ym){if(!state.months[ym]){state.months[ym]=normMonth(JSON.parse(JSON.stringify(s[ym])),ym);add++}});if(add)persistLocal()}catch(e){}}
 function docFor(id){return id==='config'?state.config:state.months[id.slice(2)]}
 function setStatus(s){if(state.status!==s){state.status=s;paintStatus()}}
 function touch(id){
@@ -638,7 +640,7 @@ document.addEventListener('submit',function(e){
   else if(k==='cfg-credit'){state.config.credits.push({id:uid(),label:label,who:fd.get('who'),amount:amount});commitCfg()}
 });
 
-loadLocal();
+loadLocal();applySeed();
 render();
 initDb();
 })();
