@@ -1198,7 +1198,7 @@ function vNous(m,c){
   var show=N.ledger.filter(function(x){var mo=String(x.date||'').slice(0,7);return mo===ym||(x.done&&x.doneIn===ym)||(!x.done&&mo<ym)}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var rows=show.map(function(x){var mo=String(x.date||'').slice(0,7),car=(!x.done&&mo<ym)||(x.done&&x.doneIn&&x.doneIn!==mo&&mo!==ym);
     return '<div class="row'+(x.done?' is-done':'')+'"><label class="chk"><input type="checkbox" data-ns="done" data-id="'+x.id+'"'+(x.done?' checked':'')+' aria-label="Réglé"><span></span></label>'+
-      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag">avancé par '+esc(nsName(x.by))+'</span><span class="tag '+(x.owe==='b'?'tw':'tb')+'">'+esc(nsName(x.owe))+' rembourse</span>'+(x.xt&&!x.done?'<span class="tag tb">Extra '+esc(ymLabel(x.xt))+'</span>':'')+(car?'<span class="tag tb">reportée de '+esc(ymLabel(mo))+'</span>':'')+'</div></div>'+
+      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag">avancé par '+esc(nsName(x.by))+'</span><span class="tag '+(x.owe==='b'?'tw':'tb')+'">'+esc(nsName(x.owe))+' rembourse</span>'+(x.xt?'<span class="tag tb">Extra '+esc(ymLabel(x.xt))+'</span>':'')+(car?'<span class="tag tb">reportée de '+esc(ymLabel(mo))+'</span>':'')+'</div></div>'+
       '<input class="num" inputmode="decimal" data-ns="amt" data-id="'+x.id+'" value="'+inp(x.amount)+'" aria-label="Montant">'+
       '<button class="x" data-ns="del" data-id="'+x.id+'" aria-label="Supprimer">×</button></div>'}).join('');
   var today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
@@ -1256,12 +1256,12 @@ function nsSync(){
       if(!f.nid){keep.push(f);return}
       var x=led[f.nid];
       if(f.paid){if(x&&!x.done&&x.owe==='b'){x.done=true;x.doneIn=k;cc=true}ex[f.nid]=1;keep.push(f);return}
-      if((!x&&N.del.indexOf(f.nid)>=0)||(x&&(x.done||x.owe!=='b'))){c=true;return}
+      if((!x&&N.del.indexOf(f.nid)>=0)||(x&&x.owe!=='b')){c=true;return}
       if(x){var a=Math.round(num(x.amount)*100)/100;if(num(f.planned)!==a){f.planned=a;f.actual=a;c=true}}
       ex[f.nid]=1;keep.push(f)});
     if(c){m.fixed=keep;mm[k]=1}});
   N.ledger.forEach(function(x){
-    if(x.owe!=='b'||x.done||x.xt||ex[x.id])return;
+    if(x.owe!=='b'||x.xt||ex[x.id])return;
     var d=String(x.date||'').slice(0,7);if(!/^\d{4}-\d{2}$/.test(d))return;
     var tk=shiftYm(d,1);if(tk<CUR)tk=CUR;
     var a=Math.round(num(x.amount)*100)/100;
