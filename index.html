@@ -68,6 +68,7 @@ main{padding:14px 0 24px;display:flex;flex-direction:column;gap:14px}
 .hero .sub{color:var(--muted);font-size:13px}
 .pos{color:var(--good)} .neg{color:var(--bad)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}.tap:active{opacity:.75}
 .kpi{border:1px solid var(--glass-b);box-shadow:var(--shadow);border-radius:16px;padding:10px 12px;background:var(--surface)}
 .kpi .l{font-size:12px;color:var(--muted)}
 .kpi .v{font-family:var(--mono);font-size:18px;font-weight:500;margin-top:2px}
@@ -351,7 +352,7 @@ function vShare(m,c,full){
     return '<div class="share"><div class="line" style="border:0;padding-bottom:2px"><span><b>'+esc(name)+'</b> <span class="pill">'+pct(S.p[i])+'</span></span><span class="n"><b>'+fmt(S.share[i])+'</b></span></div>'+
       detail+bar(got,S.share[i])+'<div class="small muted" style="margin-top:4px">Versé '+fmt(got)+' sur '+fmt(S.share[i])+(got<S.share[i]?' · reste à verser '+fmt(S.share[i]-got):'')+'</div>'+over+rest+'</div>';
   }).join('');
-  return '<section class="card"><h2>Répartition des charges</h2>'+warn+
+  return '<section class="card tap" role="button" data-act="tab" data-tab="revenus"><h2>Répartition des charges</h2>'+warn+
     '<div class="line" style="border:0;padding-top:0"><span class="muted small">Charges + courses à financer</span><span class="n"><b>'+fmt(S.base)+'</b></span></div>'+rows+'</section>';
 }
 function vSynth(m,c){
@@ -368,9 +369,9 @@ function vSynth(m,c){
   '<div class="grid2">'+
     '<div class="kpi"><div class="l">Solde réel à date</div><div class="v '+(c.balanceNow>=0?'pos':'neg')+'">'+sgn(c.balanceNow)+'</div></div>'+
     '<div class="kpi"><div class="l">Reste à payer (charges)</div><div class="v">'+fmt(c.fixedRemain)+'</div></div>'+
-    '<div class="kpi"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
+    '<div class="kpi tap" role="button" data-act="tab" data-tab="depenses"><div class="l">Dépenses hors fixes</div><div class="v">'+fmt(c.extrasTotal)+'</div></div>'+
   '</div>'+
-  '<section class="card"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
+  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges payées</h2>'+bar(c.fixedPaid,c.fixedPlanned)+
     '<div class="line" style="border:0"><span class="small muted">'+(m.fixed.length-unpaid)+' / '+m.fixed.length+' lignes</span><span class="n small">'+fmt(c.fixedPaid)+' / '+fmt(c.fixedPlanned)+'</span></div></section>'+
   '<section class="card"><h2>Enveloppe courses</h2>'+bar(c.coursesSpent,c.coursesPlanned)+
     '<div class="line" style="border:0"><span class="small muted">'+(c.coursesSpent>c.coursesPlanned?'Dépassement':'Reste')+'</span><span class="n small">'+fmt(c.coursesSpent)+' / '+fmt(c.coursesPlanned)+'</span></div></section>'+
