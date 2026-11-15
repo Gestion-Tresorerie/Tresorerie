@@ -1651,15 +1651,18 @@ function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk
 function peFoy(){var m0=state.months[ym],mm=getV(ym),c=calc(mm),S=c.S,i=state.config.contributors.indexOf('Hasina');i=i<=0?0:1;
   var has=!!m0&&(((m0.credits||[]).length)||((m0.fixed||[]).length)),r=function(v){return Math.round(v*100)/100},
     got=sum((mm.credits||[]).filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who==='Hasina'&&x.done}),function(x){return act(x,S)});
-  var oth=(mm.credits||[]).filter(function(x){return x.who==='Hasina'&&x.kind!=='paf'&&x.kind!=='paf1'&&x.kind!=='paf2'&&!/\bpaf\b/i.test(x.label||'')}).map(function(x){return {label:x.label||'',amt:r(act(x,S)),done:!!x.done}}),
-    oT=r(sum(oth,function(x){return x.amt})),oD=r(sum(oth.filter(function(x){return x.done}),function(x){return x.amt}));
+  var r2=r,oth=[],N=nsd();
+  N.ledger.forEach(function(x){if(x.owe!=='h')return;var mo=String(x.date||'').slice(0,7),show=mo===ym||(x.done&&x.doneIn===ym)||(!x.done&&mo<ym);if(!show)return;
+    oth.push({label:x.label||'',amt:r2(num(x.amount)),done:!!x.done,kind:x.xt?'Extra':'Loisirs',date:x.date||''})});
+  ((m0&&m0.shared)||getM(ym).shared||[]).forEach(function(x){if(x.by!=='l')return;oth.push({label:x.label||'',amt:r2(num(x.v)/2),done:!!x.settled,kind:'Extra 50/50',date:x.date||''})});
+  var oT=r(sum(oth,function(x){return x.amt})),oD=r(sum(oth.filter(function(x){return !x.done}),function(x){return x.amt}));
   return {has:has,due:r(S.share[i]),got:r(got),first:r(S.firstUsed),second:r(S.second),known:S.known,oth:oth,othTot:oT,othDone:oD}}
-function peOthCard(FY,sent){if(!FY.oth.length)return '';var gap=Math.round((FY.othDone-sent)*100)/100;
-  return '<section class="card"><h2>Remboursements &amp; paiements · Hasina</h2><div class="small muted" style="margin:-4px 0 8px">Assignés à Hasina dans le suivi Fortuneo (hors PAF)</div>'+
-    FY.oth.map(function(x){return '<div class="line"><span class="t"><span class="nm">'+esc(x.label)+'</span><span class="tags"><span class="tag">'+(x.done?'reçu':'en attente')+'</span></span></span><span class="n '+(x.done?'pos':'')+'">'+fmt(x.amt)+'</span></div>'}).join('')+
-    '<div class="line"><span><b>Total reçu côté Fortuneo</b></span><span class="n"><b>'+fmt(FY.othDone)+'</b></span></div>'+
-    '<div class="line"><span>Virements foyer SG (charges + extras)</span><span class="n">'+fmt(sent)+'</span></div>'+
-    '<div class="line"><span>Écart SG − Fortuneo</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(-gap))+'</span></div></section>'}
+function peOthCard(FY,sent){if(!FY.oth.length)return '';var paid=Math.round((FY.othTot-FY.othDone)*100)/100;
+  return '<section class="card"><h2>À rembourser · Hasina</h2><div class="small muted" style="margin:-4px 0 8px">Extras, extras 50/50 et Loisirs que Hasina doit régler</div>'+
+    FY.oth.slice().sort(function(a,b){return (a.done-b.done)||String(b.date).localeCompare(String(a.date))}).map(function(x){return '<div class="line"><span class="t"><span class="nm">'+esc(x.label)+'</span><span class="tags"><span class="tag">'+esc(x.kind)+'</span><span class="tag">'+(x.done?'réglé':'à payer')+'</span></span></span><span class="n '+(x.done?'':'neg')+'">'+fmt(x.amt)+'</span></div>'}).join('')+
+    '<div class="line"><span><b>Reste à payer</b></span><span class="n '+(FY.othDone>0.005?'neg':'pos')+'"><b>'+fmt(FY.othDone)+'</b></span></div>'+
+    '<div class="line"><span>Déjà réglé</span><span class="n">'+fmt(paid)+'</span></div>'+
+    '<div class="line"><span>Virements foyer SG (charges + extras)</span><span class="n">'+fmt(sent)+'</span></div></section>'}
 function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
   return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
 function peAgg(m){var D=pe.doc.data,T=(pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===m}),rc=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),
