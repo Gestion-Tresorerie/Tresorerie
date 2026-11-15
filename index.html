@@ -1678,7 +1678,7 @@ function peBars(vals,cur,goodUp){var mx=0;vals.forEach(function(v){mx=Math.max(m
   return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:46px;display:block" aria-hidden="true">'+vals.map(function(v,i){var h=Math.max(1.5,Math.abs(v)/mx*30),neg=v<0,i2=i===vals.length-1,c=(goodUp===undefined)?(neg?'var(--bad)':'var(--good)'):'var(--accent)';
     return '<rect x="'+(i*W+W*0.18).toFixed(2)+'" y="'+(33-h).toFixed(2)+'" width="'+(W*0.64).toFixed(2)+'" height="'+h.toFixed(2)+'" rx="1.2" fill="'+c+'" opacity="'+(i2?1:0.42)+'"/>'}).join('')+'</svg>'}
 function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return ymLabel(m).slice(0,4)},
-  prev=peAgg(shiftYm(ym,-1)),used=Math.round((c.fix+c.foy+c.vr)*100)/100,pct=c.inc>0?Math.min(999,Math.round(used/c.inc*100)):0,
+  prev=peAgg(shiftYm(ym,-1)),used=Math.round((c.fix+c.foy+c.vr+c.pafLeft)*100)/100,pct=c.inc>0?Math.min(999,Math.round(used/c.inc*100)):0,
   today=new Date().toISOString().slice(0,10),from=c.PP.from,end=c.PP.to||(function(){var d=new Date(from+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)})(),
   live=today>=from&&today<=end,left=live?Math.round((new Date(end+'T12:00:00Z')-new Date(today+'T12:00:00Z'))/864e5)+1:0,
   elapsed=live?Math.round((new Date(today+'T12:00:00Z')-new Date(from+'T12:00:00Z'))/864e5)+1:0;
@@ -1693,14 +1693,15 @@ function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return 
   /* hero */
   h+='<section class="card pd-hero"><div class="small muted">Reste à vivre · '+esc(ymLabel(ym))+'</div><div class="big '+(c.reste<0?'neg':'pos')+'" style="font-size:34px">'+fe(c.reste)+'</div>'+
     '<div class="pd-gauge"><div class="bar'+(pct>100?' over':'')+'"><i style="width:'+Math.min(100,pct)+'%"></i></div><div class="small muted" style="margin-top:4px">'+pct+' % des revenus consommés · '+fe(used)+' sur '+fe(c.inc)+'</div></div>'+
+    (c.pafLeft>0?'<div class="small" style="margin-top:6px;color:var(--warn)">Déduit : '+fe(c.pafLeft)+' de PAF pas encore virée (attendue '+fe(c.FY.due)+' · virée '+fe(c.foyP)+')</div>':'')+
     '<div class="small muted" style="margin-top:6px">Période : du '+esc(c.PP.from.split('-').reverse().join('/'))+(c.PP.auto?' (1er salaire)':'')+' au '+(c.PP.to?esc(c.PP.to.split('-').reverse().join('/')):'prochain salaire')+'</div>'+
     (live&&left>0?'<div class="pd-pace"><div><b>'+(c.reste>0?fe(Math.round(c.reste/left*100)/100):'0,00 €')+'</b><span>possibles / jour</span></div><div><b>'+left+' j</b><span>restants</span></div><div><b>'+fe(Math.round(c.vr/Math.max(1,elapsed)*100)/100)+'</b><span>dépensés / jour</span></div></div>':'')+'</section>';
   /* KPI */
   var K=[['Revenus',c.inc,prev.has?prev.inc:null,1],['Charges fixes',c.fix,prev.has?prev.fix:null,0],['Virement foyer',c.foy,prev.has?prev.foy:null,0],['Dépenses',c.vr,prev.has?prev.vr:null,0]];
   h+='<div class="pd-kpis">'+K.map(function(k){var d=k[2]==null?null:Math.round((k[1]-k[2])*100)/100,good=d==null?null:(k[3]?d>=0:d<=0);
-    return '<div class="pd-kpi"><span class="small muted">'+k[0]+'</span><b>'+fe(k[1])+'</b>'+(d==null||Math.abs(d)<0.015?'<span class="small muted">—</span>':'<span class="small '+(good?'pos':'neg')+'">'+(d>0?'▲ ':'▼ ')+fe(Math.abs(d))+' vs mois préc.</span>')+'</div>'}).join('')+'</div>';
+    return '<div class="pd-kpi"><span class="small muted">'+k[0]+'</span><b>'+fe(k[1])+'</b>'+(d==null||Math.abs(d)<0.015?'<span class="small muted">—</span>':'<span class="small '+(good?'pos':'neg')+'">'+(d>0?'▲ ':'▼ ')+fe(Math.abs(d))+' vs mois préc.</span>')+(k[0]==='Virement foyer'&&c.pafLeft>0?'<span class="small" style="color:var(--warn)">+ '+fe(c.pafLeft)+' PAF à virer</span>':'')+'</div>'}).join('')+'</div>';
   /* répartition */
-  var base=Math.max(c.inc,used,1),seg=[['Fixes',c.fix,'var(--accent)'],['Foyer',c.foy,'#8b7bd8'],['Dépenses',c.vr,'#e0a030'],['Reste',Math.max(0,c.reste),'var(--good)']];
+  var base=Math.max(c.inc,used,1),seg=[['Fixes',c.fix,'var(--accent)'],['Foyer',c.foy,'#8b7bd8'],['PAF à virer',c.pafLeft,'repeating-linear-gradient(45deg,#8b7bd8 0 4px,transparent 4px 8px)'],['Dépenses',c.vr,'#e0a030'],['Reste',Math.max(0,c.reste),'var(--good)']];
   h+='<section class="card"><h2>Répartition du mois</h2><div class="pd-stack">'+seg.map(function(x){return x[1]>0?'<i style="width:'+(x[1]/base*100).toFixed(2)+'%;background:'+x[2]+'" title="'+x[0]+'"></i>':''}).join('')+(used>c.inc&&c.inc>0?'':'')+'</div>'+
     '<div class="pd-leg">'+seg.map(function(x){return '<span><i style="background:'+x[2]+'"></i>'+x[0]+' <b>'+fe(x[1])+'</b></span>'}).join('')+'</div></section>';
   h+=peOthCard(c.FY,c.foyCE);
@@ -1710,7 +1711,7 @@ function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return 
   h+='<section class="card"><h2>Catégories vs enveloppes</h2>'+(rows.length?'<div class="pd-cat">'+rows.map(function(r){var env=r[2]>0,o=env&&r[1]>r[2],w=env&&r[1]>=r[2]*0.8&&!o,col=o?'var(--bad)':(w?'var(--warn)':'var(--accent)');
     return '<div class="pd-cr"><span class="pd-cn">'+esc(r[0])+'</span><span class="pd-cb"><i style="width:'+Math.min(100,r[1]/sc*100).toFixed(1)+'%;background:'+col+'"></i>'+(env?'<u style="left:'+Math.min(100,r[2]/sc*100).toFixed(1)+'%"></u>':'')+'</span><span class="pd-cv'+(o?' neg':'')+'">'+Math.round(r[1])+(env?'<small> / '+Math.round(r[2])+'</small>':'')+'</span></div>'}).join('')+'</div>'+(rows.some(function(r){return r[2]>0})?'<div class="small muted" style="margin-top:8px">Trait = enveloppe · € arrondis</div>':'')+'':'<div class="empty">Aucune dépense ce mois-ci.</div>')+'</section>';
   /* évolution 6 mois */
-  var ms=[];for(var i=5;i>=0;i--)ms.push(shiftYm(ym,-i));var ag=ms.map(function(m){var a=m===ym?{has:true,inc:c.inc,fix:c.fix,foy:c.foy,vr:c.vr,reste:c.reste}:peAgg(m);a.m=m;return a}),
+  var ms=[];for(var i=5;i>=0;i--)ms.push(shiftYm(ym,-i));var ag=ms.map(function(m){var a=m===ym?{has:true,inc:c.inc,fix:c.fix,foy:c.foy+c.pafLeft,vr:c.vr,reste:c.reste}:peAgg(m);a.m=m;return a}),
     dat=ag.filter(function(a){return a.has&&(a.inc>0||a.vr>0||a.foy>0)}),av=function(k){return dat.length?Math.round(sum(dat,function(a){return a[k]})/dat.length*100)/100:0},mxI=0;dat.forEach(function(a){mxI=Math.max(mxI,a.inc,a.fix+a.foy+a.vr)});mxI=mxI||1;
   h+='<section class="card"><h2>Évolution · 6 mois</h2>'+(dat.length>1?
     '<div class="pd-avg"><div><span>Reste moyen</span><b class="'+(av('reste')<0?'neg':'pos')+'">'+fe(av('reste'))+'</b></div><div><span>Dépenses moy.</span><b>'+fe(av('vr'))+'</b></div><div><span>Foyer moy.</span><b>'+fe(av('foy'))+'</b></div></div>'+
@@ -1734,7 +1735,7 @@ function vPerso(){
     inc=rcv.length?rcvS:Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
     deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0,fixT=0,foyP=0,foyC=0,foyE=0;
   deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(peIsF(c)){foy+=a;if(c==='Foyer·Charge')foyC+=a;else if(c==='Foyer·Extra')foyE+=a;else foyP+=a}else if(c==='Fixe'||c==='Abonnements')fixT+=a;else if(c!=='Ignorer'&&c!=='Revenu')vr+=a;if(!pe.doc.data.tx[t.id]&&!peRuled(t))todo++});
-  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;if(fixT>0)fix=fixT;var reste=Math.round((inc-fix-foy-vr)*100)/100;
+  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;if(fixT>0)fix=fixT;var FYd=peFoy(),pafLeft=(FYd.has&&FYd.due>0)?Math.max(0,Math.round((FYd.due-foyP)*100)/100):0,reste=Math.round((inc-fix-foy-vr-pafLeft)*100)/100;
   var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
   h+='<section class="card phead"><div><div class="small muted">Solde Société Générale</div><div class="big" style="font-size:28px">'+(pe.bal?fmt(pe.bal.amount):'—')+'</div>'+
     (pe.fetched?'<div class="small muted">'+(pe.hist?'Depuis le '+esc(pe.hist.split('-').reverse().join('/'))+' · ':'')+'MàJ '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'')+'</div>'+
@@ -1744,7 +1745,7 @@ function vPerso(){
   h+=peSegs();
   var PP=pePeriod(ym);
   if(sub==='apercu'){
-    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
+    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,pafLeft:pafLeft,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
   }else if(sub==='ops'){
     var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
     h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
