@@ -1347,7 +1347,7 @@ function schedSync(){return;if(!bank.token)return;clearTimeout(syT);syT=setTimeo
 function typing(){var a=document.activeElement;return !!(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))}
 function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e){return {}}}
 function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
-function syncCount(){var m=syMeta();return syIds().filter(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)}).length}
+function syncCount(){var m=syMeta();return syIds().filter(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)}).length+(persoPending()?1:0)}
 function syncPending(){return syncCount()>0}
 function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
 function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
@@ -1389,7 +1389,7 @@ function syPreview(plan,ok,cancel){
   var old=document.getElementById('syov');if(old)old.remove();
   var ov=document.createElement('div');ov.id='syov';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
   var nI=plan.reduce(function(n,q){return n+q.items.length},0),body=plan.map(function(q,i){
-    var t=q.id==='config'?'Réglages':ymLabel(q.id.slice(2)),dl={push:'Envoi',pull:'Réception',merge:'Fusion'}[q.dir]+(q.isNew?' · nouveau':'');
+    var t=q.id==='config'?'Réglages':(q.id==='perso'?'Perso (privé)':ymLabel(q.id.slice(2))),dl={push:'Envoi',pull:'Réception',merge:'Fusion'}[q.dir]+(q.isNew?' · nouveau':'');
     return '<div style="border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px"><label style="display:flex;align-items:center;gap:10px;font-weight:600"><input type="checkbox" data-sy="'+i+'" checked style="width:18px;height:18px"><span style="flex:1">'+esc(t)+'</span><span class="small muted" style="font-weight:400">'+dl+'</span></label>'+
       (q.isNew&&q.items.length>6?'<div class="small muted" style="margin-top:6px">Premier envoi complet : '+q.items.length+' éléments</div>':q.items.length?q.items.slice(0,30).map(function(it){return '<div class="small" style="margin-top:6px;display:flex;gap:8px"><span style="flex:0 0 auto;font-family:var(--mono);color:'+(it[0]==='+'?'var(--good)':(it[0]==='−'?'var(--bad)':'var(--warn)'))+'">'+it[0]+it[1]+'</span><span>'+it[2]+'</span></div>'}).join('')+(q.items.length>30?'<div class="small muted" style="margin-top:6px">… et '+(q.items.length-30)+' autres</div>':''):'<div class="small muted" style="margin-top:6px">Aucune ligne modifiée</div>')+'</div>'}).join('');
   ov.innerHTML='<div style="background:var(--page);color:var(--ink);width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 16px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.4)"><h2 style="margin:0 0 4px">À synchroniser</h2><p class="small muted" style="margin:0 0 12px">'+nI+' modification'+(nI>1?'s':'')+' · → envoyé à l’autre téléphone · ← reçu. Décoche ce que tu ne veux pas synchroniser.</p>'+body+'<div style="display:flex;gap:8px;position:sticky;bottom:-22px;margin:0 -16px -22px;padding:10px 16px 22px;background:var(--page)"><button class="btn" data-sy-c="1" style="flex:1">Annuler</button><button class="btn primary" data-sy-ok="1" style="flex:2">Confirmer</button></div></div>';
@@ -1403,9 +1403,13 @@ function doSync(silent){
   sy.busy=true;sy.err='';paintStatus();
   bankCall('/sync').then(function(x){
     if(!x.ok)throw new Error('get');
-    var rem=x.d.docs||{},plan=syPlan(rem);
-    if(!plan.length||silent)return syApply(rem,silent,null);
-    syPreview(plan,function(skip){syApply(rem,false,skip).catch(syFail)},function(){sy.busy=false;paintStatus()})
+    var rem=x.d.docs||{},pp=pe.key?peCall('/perso/doc').then(function(y){if(!y.ok)throw new Error('perso');return y.d.doc||null}):Promise.resolve(undefined);
+    return pp.then(function(rp){
+      var plan=syPlan(rem),pm=(rp===undefined)?null:pePlan(rp);
+      if(pm&&(pm.items.length||pm.isNew))plan.push({id:'perso',dir:pm.dir,isNew:pm.isNew,items:pm.items});
+      var run=function(skip){return syApply(rem,silent,skip).then(function(){return (pm&&!(skip&&skip.perso))?peApply(pm):null}).then(function(){syLast=Date.now();sy.ok=true;sy.busy=false;render()}).catch(syFail)};
+      if(!plan.length||silent)return run(null);
+      syPreview(plan,function(skip){run(skip)},function(){sy.busy=false;paintStatus()})})
   }).catch(syFail);
 }
 function syApply(rem,silent,skip){
@@ -1681,6 +1685,47 @@ function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso
 function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};x.rules=(x.rules&&typeof x.rules==='object')?x.rules:{};return d}
 peNorm();
 function peStore(){try{localStorage.setItem('budget-perso-v1',JSON.stringify(pe.doc))}catch(e){}}
+function peMetaGet(){try{return JSON.parse(localStorage.getItem('budget-perso-sync')||'{}')||{}}catch(e){return {}}}
+function peMetaSet(ts,data){try{localStorage.setItem('budget-perso-sync',JSON.stringify({ts:ts,base:clone(data)}))}catch(e){}}
+function persoPending(){return !!(pe.doc&&pe.doc.ts>0&&pe.doc.ts>(peMetaGet().ts||0))}
+function peEq(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function peMergeMap(b,l,r,lNew){var o={},ks={};[b,l,r].forEach(function(m){Object.keys(m||{}).forEach(function(k){ks[k]=1})});
+  Object.keys(ks).forEach(function(k){var bv=b?b[k]:undefined,lv=l?l[k]:undefined,rv=r?r[k]:undefined,v;
+    if(peEq(lv,rv))v=lv;else if(peEq(lv,bv))v=rv;else if(peEq(rv,bv))v=lv;else v=lNew?lv:rv;if(v!==undefined)o[k]=v});return o}
+function peArrMap(a){var m={};(a||[]).forEach(function(x){m[x.id]=x});return m}
+function peMergeArr(b,l,r,lNew){var mm=peMergeMap(peArrMap(b),peArrMap(l),peArrMap(r),lNew),out=[],seen={};
+  (l||[]).concat(r||[]).forEach(function(x){if(seen[x.id])return;seen[x.id]=1;if(mm[x.id]!==undefined)out.push(mm[x.id])});return out}
+function peMerge3(b,l,r,lNew){b=b||{};var o={};Object.keys(r).forEach(function(k){o[k]=r[k]});Object.keys(l).forEach(function(k){o[k]=l[k]});
+  if(!lNew)Object.keys(r).forEach(function(k){o[k]=r[k]});
+  ['incomes','fixed'].forEach(function(k){o[k]=peMergeArr(b[k],l[k],r[k],lNew)});
+  ['env','tx','paid','rules'].forEach(function(k){o[k]=peMergeMap(b[k],l[k],r[k],lNew)});return o}
+function peDiffLines(f,t,side){var out=[],fx=f.fixed||[],tx_=t.fixed||[];
+  function lbl(id,list1,list2){var x=peArrMap(list2)[id]||peArrMap(list1)[id];return x?x.label:'?'}
+  function line(sym,txt){out.push([sym,side,txt])}
+  ['incomes','fixed'].forEach(function(k){var A=peArrMap(f[k]),B=peArrMap(t[k]),seen={},nm=k==='incomes'?'Revenu':'Charge perso';
+    Object.keys(A).concat(Object.keys(B)).forEach(function(id){if(seen[id])return;seen[id]=1;var a=A[id],b=B[id];
+      if(a&&!b)line('−',nm+' supprimé(e) · '+esc(a.label));else if(!a&&b)line('+',nm+' · '+esc(b.label)+' · '+fmt(b.amount));else if(!peEq(a,b))line('~',nm+' · '+esc(b.label)+' : '+fmt(a.amount)+' → '+fmt(b.amount))})});
+  [['tx','Catégorie'],['rules','Règle'],['paid','Réglé'],['env','Enveloppe']].forEach(function(sc){var k=sc[0],A=f[k]||{},B=t[k]||{},seen={};
+    Object.keys(A).concat(Object.keys(B)).forEach(function(id){if(seen[id])return;seen[id]=1;var a=A[id],b=B[id],name,txt;
+      if(k==='tx'){var o=(pe.tx||[]).filter(function(y){return y.id===id})[0];name=o?o.label:'opération';a=a&&a.cat;b=b&&b.cat}
+      else if(k==='paid'){var pr=id.split(':');name=lbl(pr[1],f.fixed,t.fixed)+' ('+pr[0]+')'}
+      else name=id;
+      if(a!==undefined&&b===undefined)line('−',sc[1]+' retiré(e) · '+esc(name));
+      else if(a===undefined&&b!==undefined)line('+',sc[1]+' · '+esc(name)+(k==='paid'?'':' → '+(k==='env'?fmt(b):esc(String(b)))));
+      else if(!peEq(a,b))line('~',sc[1]+' · '+esc(name)+' : '+(k==='env'?fmt(a)+' → '+fmt(b):esc(String(a))+' → '+esc(String(b))))})});
+  return out}
+function pePlan(rp){
+  var L=pe.doc,Lts=L.ts||0,meta=peMetaGet();
+  if(!rp){if(Lts<=0)return null;return {dir:'push',isNew:1,merged:clone(L.data),hasSent:true,rts:0,items:peDiffLines({},L.data,'→')}}
+  var Rts=rp.ts||0;if(Rts===Lts){if((meta.ts||0)!==Lts)peMetaSet(Lts,L.data);return null}
+  var R=peFix({ts:Rts,data:clone(rp.data||{})}).data,merged=peMerge3(meta.base,L.data,R,Lts>=Rts),
+    rec=peDiffLines(L.data,merged,'←'),snt=peDiffLines(R,merged,'→');
+  return {dir:rec.length&&snt.length?'merge':(rec.length?'pull':'push'),merged:merged,hasSent:snt.length>0,rts:Rts,items:snt.concat(rec)}}
+function peApply(pm){
+  var Lts=pe.doc.ts||0,nts=pm.hasSent?Math.max(Lts,pm.rts)+1:pm.rts;
+  pe.doc=peFix({ts:nts,data:pm.merged});peStore();
+  if(!pm.hasSent){peMetaSet(nts,pe.doc.data);return Promise.resolve()}
+  return peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).then(function(y){if(!y.ok)throw new Error('perso');peMetaSet(nts,pe.doc.data)})}
 function peCall(path,opts){
   opts=opts||{};var h={'Content-Type':'application/json'};if(bank.token)h.Authorization='Bearer '+bank.token;if(pe.key)h['X-Perso']=pe.key;opts.headers=h;
   return fetch(BANK_API+path,opts).then(function(r){return r.json().then(function(d){
@@ -1688,12 +1733,11 @@ function peCall(path,opts){
     return {ok:r.ok,status:r.status,d:d}})});
 }
 function peFail(){pe.busy=false;pe.msg='Passerelle injoignable. Vérifie ta connexion.';render()}
-function peSave(){pe.doc.ts=Date.now();peStore();if(pe.key)peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){});render()}
+function peSave(){pe.doc.ts=Date.now();peStore();render()}
 function peLoad(){
   if(!pe.key||!bank.token)return;pe.busy=true;render();
   peCall('/perso/doc').then(function(x){
-    if(x.ok&&x.d.doc&&typeof x.d.doc.ts==='number'&&x.d.doc.ts>pe.doc.ts){pe.doc=peFix(x.d.doc);peStore()}
-    else if(x.ok&&pe.doc.ts>0&&(!x.d.doc||pe.doc.ts>x.d.doc.ts))peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){});
+    if(x.ok&&x.d.doc&&typeof x.d.doc.ts==='number'&&pe.doc.ts===0){pe.doc=peFix(x.d.doc);peStore();peMetaSet(pe.doc.ts,pe.doc.data)}
     return peCall('/perso/status')}).then(function(x){
     pe.busy=false;if(x.ok){pe.st=x.d;pe.msg='';render();if(x.d.linked&&!x.d.expired)peTx(false)}
     else{pe.msg=pe.key?'Impossible de lire le compte perso ('+(x.d&&x.d.error||x.status)+').':'Mot de passe perso incorrect.';render()}}).catch(peFail);
@@ -1706,7 +1750,7 @@ function peTx(force){
     else pe.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement a expiré : reconnecte la Société Générale.':'Impossible de récupérer les opérations ('+(x.d&&x.d.error||x.status)+(x.d&&x.d.detail?' : '+(typeof x.d.detail==='string'?x.d.detail:JSON.stringify(x.d.detail)).slice(0,160):'')+').';
     render()}).catch(peFail);
 }
-function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
+function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1');localStorage.removeItem('budget-perso-sync')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
 function peVisible(){return !!(bank.st&&bank.st.user==='hasina')}
 function pePaint(){var b=document.getElementById('persoBtn'),v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();if(b)b.hidden=!v;
   if(v&&pe.key&&!pe.loaded){pe.loaded=true;setTimeout(peLoad,0)}}
@@ -1738,7 +1782,7 @@ function pePeriod(m){var S=peStarts(),a=S[m]||(m+'-01'),nx=S[shiftYm(m,1)];retur
 function peBackfill(){var D=pe.doc.data,cnt={},ch=false;
   (pe.tx||[]).forEach(function(t){var o=D.tx[t.id];if(!o||!o.cat)return;var k=peKey(t.label);if(!k)return;(cnt[k]=cnt[k]||{})[o.cat]=(cnt[k][o.cat]||0)+1});
   Object.keys(cnt).forEach(function(k){if(D.rules[k])return;var b=null,m=0;Object.keys(cnt[k]).forEach(function(c){if(cnt[k][c]>m){m=cnt[k][c];b=c}});if(b){D.rules[k]=b;ch=true}});
-  if(ch){pe.doc.ts=Date.now();peStore();if(pe.key)peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){})}}
+  if(ch){pe.doc.ts=Date.now();peStore()}}
 function peRuled(t){var k=peKey(t.label);return !!(k&&pe.doc.data.rules&&pe.doc.data.rules[k])}
 function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===ym})}
 function peFoy(){var m0=state.months[ym],mm=getV(ym),c=calc(mm),S=c.S,i=state.config.contributors.indexOf('Hasina');i=i<=0?0:1;
