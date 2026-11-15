@@ -277,6 +277,7 @@ input.num{font-size:16px;padding:11px 10px}
 .ro input:disabled,.ro select:disabled{opacity:.8;-webkit-text-fill-color:currentColor}
 .ro .btn:disabled,.ro .x:disabled{opacity:.4}
 .kp3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.kp3 .kpi{padding:10px}.kp3 .kpi .v{font-size:15px}
+.kp3 .kpi .l{white-space:nowrap;letter-spacing:.06em}
 .msec{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 4px 2px}
 .mgh{display:flex;justify-content:space-between;align-items:center;width:100%;gap:10px;background:none;border:0;padding:2px 0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .mgh>span:first-child{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
@@ -832,7 +833,7 @@ function vModel(){
   var gopts=function(sel){return GROUPS.concat(cfg.fixed.map(function(t){return t.group}).filter(function(g,i,a){return GROUPS.indexOf(g)<0&&a.indexOf(g)===i})).map(function(g){return '<option'+(g===sel?' selected':'')+'>'+esc(g)+'</option>'}).join('')};
   var wopts=function(sel){return cfg.contributors.concat(['Autre']).map(function(w){return '<option'+(w===sel?' selected':'')+'>'+esc(w)+'</option>'}).join('')};
   var tot=sum(cfg.fixed,function(t){return t.amount}),net=num(cfg.incomes[0])+num(cfg.incomes[1]),base=tot+num(cfg.courses),rate=net>0?base/net:0;
-  var kp='<section class="card"><h2>Vue d’ensemble</h2><div class="kp3"><div class="kpi"><div class="l">Charges</div><div class="v">'+fmt(tot)+'</div></div><div class="kpi"><div class="l">+ Courses</div><div class="v">'+fmt(base)+'</div></div><div class="kpi"><div class="l">Revenus nets</div><div class="v">'+fmt(net)+'</div></div></div>'+
+  var kp='<section class="card"><h2>Vue d’ensemble</h2><div class="kp3"><div class="kpi"><div class="l">Charges</div><div class="v">'+fmt(tot)+'</div></div><div class="kpi"><div class="l">+ Courses</div><div class="v">'+fmt(base)+'</div></div><div class="kpi"><div class="l">Revenus</div><div class="v">'+fmt(net)+'</div></div></div>'+
     '<div class="small muted" style="margin-top:10px">Base à financer : '+fmt(base)+' = <b>'+pct(rate)+'</b> des revenus nets. Partagée au prorata des revenus.</div></section>';
   var foyer='<section class="card"><h2>Foyer</h2><div class="grid2">'+cfg.contributors.slice(0,2).map(function(n,i){return '<div><label class="small muted">Prénom<input type="text" data-contrib="'+i+'" value="'+esc(n)+'" style="margin-top:4px"></label><label class="small muted" style="display:block;margin-top:10px">Revenu net / mois<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label></div>'}).join('')+'</div>'+
     '<label class="small muted" style="display:block;margin-top:12px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>';
