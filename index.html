@@ -756,14 +756,14 @@ function vLink(m){
   var L=lkLines(m),X=lkXt(m),T=lkTx(m),U=lkUnc(m);
   if(!lk.on)return '';
   var tx=T.filter(function(e){return e.id===lk.tx})[0];
-  var h='<section class="card"><h2>1 · Choisir le débit</h2>'+T.map(function(e){
+  var h1='<section class="card"><h2>1 · Choisir le débit</h2>'+T.map(function(e){
     return '<div class="todo tap'+(tx&&tx.id===e.id?' on':'')+'" role="button" data-lk="tx" data-id="'+e.id+'"><span><b>'+esc(e.label)+'</b><small class="muted">'+esc(e.date||'')+'</small></span><span class="n neg">'+fmt(e.amount)+'</span></div>'}).join('')+
     (U.length?'<div class="grp" style="margin-top:14px"><b>Non comptés</b></div><p class="small muted" style="margin:0 0 6px">Touche une opération pour la compter comme dépense, puis la relier.</p>'+U.map(function(t){var f=bsFixed(t,m);
       return '<div class="todo tap" role="button" data-lk="unc" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+'</b><small class="muted">'+esc(t.date||'')+(f?' · décochera « '+esc(f.label)+' »':'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
-    (!T.length&&!U.length?'<div class="empty">Aucun débit Fortuneo à relier ce mois-ci.</div>':'')+'</section>';
+    (!T.length&&!U.length?'<div class="empty">Aucun débit Fortuneo à relier ce mois-ci.</div>':'')+'</section>',h=tx?'':h1;
   if(tx){
     var ids=Object.keys(lk.sel).filter(function(k){return lk.sel[k]}),tot=sum(L.concat(X).filter(function(x){return lk.sel[x.id]}),lkA),gap=Math.round((tx.amount-tot)*100)/100;
-    h+='<section class="card"><h2>2 · Cocher les achats</h2>'+(!L.length&&!X.length?'<div class="empty">Aucun achat saisi ni extra prévu à relier : ajoute-les d’abord.</div>':'')+L.map(function(x){
+    h+='<section class="card"><h2>Cocher les achats</h2><div class="todo on"><span><b>'+esc(tx.label)+'</b><small class="muted">'+esc(tx.date||'')+'</small></span><span class="n neg">'+fmt(tx.amount)+'</span></div><button class="btn" data-lk="chg" style="margin:6px 0 10px">Changer de débit</button>'+(!L.length&&!X.length?'<div class="empty">Aucun achat saisi ni extra prévu à relier : ajoute-les d’abord.</div>':'')+L.map(function(x){
       return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">'+esc(x.date||'')+'</small></span><span class="n">'+fmt(x.amount)+'</span></div>'}).join('')+
       (X.length?'<div class="grp" style="margin-top:14px"><b>Extras prévus</b></div>'+X.map(function(x){
         return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">extra · prévu</small></span><span class="n">'+fmt(x.planned)+'</span></div>'}).join(''):'')+
@@ -1156,6 +1156,7 @@ document.addEventListener('click',function(e){
     var uex={id:uid(),label:String(bkTitle(ut)).slice(0,48),cat:'Courses',amount:Math.abs(ut.amount),date:ut.date,bankId:ut.id};um.extras.push(uex);
     lk.tx=uex.id;lk.sel={};commitM();var um2=getV(ym),up=lkPick(um2,uex.amount);(up||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tx'){lk.tx=t.dataset.id;lk.sel={};var x=lkTx(m).filter(function(y){return y.id===lk.tx})[0],p=x&&lkPick(m,x.amount);(p||[]).forEach(function(id){lk.sel[id]=1});render()}
+  else if(a==='chg'){lk.tx=null;lk.sel={};render()}
   else if(a==='tog'){lk.sel[t.dataset.id]=!lk.sel[t.dataset.id];render()}
   else if(a==='cancel'){lk={on:false,tx:null,sel:{}};render()}
   else if(a==='undo'){var u=editM(ym),ux=findBy(u.extras,t.dataset.id)||findBy(u.fixed,t.dataset.id);if(!ux||!ux.grp)return;var gid=ux.grp,bt=ux.btx;
