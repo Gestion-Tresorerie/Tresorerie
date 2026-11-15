@@ -383,7 +383,7 @@ function normCfg(d){
 function normMonth(d,key){
   var m=clone(d||{});
   m.ym=key; m.courses=m.courses||{planned:state.config.courses};
-  m.credits=m.credits||[]; m.fixed=m.fixed||[]; m.extras=m.extras||[]; m.pend=m.pend||[];
+  m.credits=m.credits||[]; m.fixed=m.fixed||[]; m.extras=m.extras||[];
   return m;
 }
 function build(key){
@@ -589,15 +589,11 @@ var synLast=0;
 function stCol(k){return k==='g'?'var(--good)':(k==='o'?'var(--warn)':'var(--bad)')}
 function ringSvg(p,k){var R=29,L=2*Math.PI*R,pp=Math.max(0,Math.min(100,p));return '<svg class="ring" viewBox="0 0 70 70" width="72" height="72" aria-hidden="true"><circle class="rt" cx="35" cy="35" r="29" fill="none" stroke-width="7"/><circle class="rp" cx="35" cy="35" r="29" fill="none" style="stroke:'+stCol(k)+';color:'+stCol(k)+';--L:'+L.toFixed(1)+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+L.toFixed(1)+'" stroke-dashoffset="'+(L*(1-pp/100)).toFixed(1)+'" transform="rotate(-90 35 35)"/></svg>'}
 function ringTile(label,p,k,tab,val,tot,sub){var nf=function(v){return num(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})};return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf(val)+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div><div class="rs">'+(sub||'sur')+' '+fmt(tot)+'</div></div>'}
-function manPend(){var m=state.months[CUR],L=(m&&m.pend)||[],used={},T=(bank.tx||[]).filter(function(t){return !t.pending});
-  return L.filter(function(x){var lo=Date.parse(x.d)-2*864e5;for(var i=0;i<T.length;i++){var t=T[i];if(!used[i]&&Date.parse(t.date)>=lo&&Math.abs(num(t.amount)-x.amount)<0.005){used[i]=1;return false}}return true})}
-function manUI(b){var chips=(b.man||[]).map(function(x){return '<span class="tag tw" style="margin:4px 6px 0 0">'+sgn(x.amount)+' <button class="x" data-act="del" data-list="pend" data-from="'+CUR+'" data-id="'+x.id+'" aria-label="Supprimer">×</button></span>'}).join('');
-  return (chips?'<div style="margin-top:6px">'+chips+'</div>':'')+'<form data-form="add-pend" style="display:flex;gap:8px;margin-top:10px"><input type="text" name="amount" inputmode="decimal" placeholder="Opération en cours : montant" required aria-label="Opération en cours" style="flex:1;min-width:0"><button class="btn mini" type="submit">+ En cours</button></form>'}
 function balNow(){
   var b=!col&&bank.bal;if(!b)return null;
   var T=String(b.type||'').toUpperCase(),avail=/^(ITAV|CLAV|XPCD)$/.test(T);
-  var P=(bank.tx||[]).filter(function(t){return t.pending&&t.amount}),pb=sum(P,function(t){return num(t.amount)}),M=manPend(),pm=sum(M,function(x){return x.amount});
-  return {amount:Math.round((b.amount+pb+pm)*100)/100,booked:b.amount,pend:Math.round((pb+pm)*100)/100,n:P.length+M.length,man:M,avail:avail,date:b.date,at:b.at};
+  var P=(bank.tx||[]).filter(function(t){return t.pending&&t.amount}),pend=Math.round(sum(P,function(t){return num(t.amount)})*100)/100;
+  return {amount:Math.round((b.amount+pend)*100)/100,booked:b.amount,pend:pend,n:P.length,avail:avail,date:b.date,at:b.at};
 }
 function balSpark(){
   var b=balNow();if(!b||!bank.tx||!bank.tx.length)return '';
@@ -635,7 +631,7 @@ function vSynth(m,c){
   var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.kPaid,c.kPlanned)+'</div>';
   return ''+
   (function(){var b=balNow(),dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
-    return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en cours ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">avant attente '+fmt(b.booked)+'</span></div>':'')+manUI(b):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
+    return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en attente ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">avant attente '+fmt(b.booked)+'</span></div>':''):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
   rings+
   vTodo(m,c)+vAdv()+
   '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div><div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
@@ -1166,7 +1162,7 @@ function syncPending(){var m=syMeta();return syIds().some(function(id){var d=doc
 function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
 function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
   (a.del||[]).concat(b.del||[]).forEach(function(k){dead[k]=1});
-  ['fixed','credits','extras','pend'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
+  ['fixed','credits','extras'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
     (o[l]||[]).forEach(function(x){var k=syKey(x,l);if(!have[k]&&!dead[k])r[l].push(clone(x))})});
   r.del=Object.keys(dead).slice(-300);
   r.bankSeen=Object.assign({},o.bankSeen||{},r.bankSeen||{});return r}
@@ -1388,7 +1384,6 @@ document.addEventListener('submit',function(e){
   var form=e.target.closest('[data-form]'); if(!form)return;
   e.preventDefault();
   var fd=new FormData(form),k=form.dataset.form;
-  if(k==='add-pend'){var raw=String(fd.get('amount')||'').trim(),pl=/^\+/.test(raw),av=Math.abs(num(raw.replace(/^\+/,'')));if(av>0){var pm=editM(CUR);pm.pend=pm.pend||[];pm.pend.push({id:uid(),amount:pl?av:-av,d:new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10)});touch('m-'+CUR);render()}return}
   var label=String(fd.get('label')||'').trim(), amount=num(fd.get('amount'));
   if(!label)return;
   if(k==='add-fixed'){editM(ym).fixed.push({id:uid(),label:label,group:fd.get('group'),planned:amount,actual:amount,paid:false});commitM()}
