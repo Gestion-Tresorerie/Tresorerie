@@ -335,9 +335,9 @@ body{padding-bottom:28px}
 <div id="scrim"></div>
 <div class="tabbar" id="drawer"><div class="dbrand"><img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='64' y2='64'%3E%3Cstop offset='0' stop-color='%23ffe58a'/%3E%3Cstop offset='.55' stop-color='%23f5b72e'/%3E%3Cstop offset='1' stop-color='%23c98410'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M17 17 L19 6 L26 12 L32 4 L38 12 L45 6 L47 17 Z' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='12.5' r='2' fill='%23e5384a'/%3E%3Cg fill='none' stroke='url(%23g)' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M43 28 C43 22 38 21 32 21 C26 21 21 24 21 29.5 C21 35 27 36 32 37 C38 38 43 40 43 45.5 C43 51 38 54 32 54 C26 54 21 51 21 46' stroke-width='5.5'/%3E%3Cpath d='M32 18 V58' stroke-width='3.5'/%3E%3C/g%3E%3C/svg%3E"><b>Budget du foyer</b></div><nav aria-label="Sections">
   <button data-act="tab" data-tab="synthese"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z"/></svg>Synthèse</button>
-  <button data-act="tab" data-tab="fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Charges</button>
+  <button data-act="tab" data-tab="fixes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Charges fixes</button>
   <button data-act="tab" data-tab="extra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Charges extra</button>
-  <button data-act="tab" data-tab="depenses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Dépenses</button>
+  <button data-act="tab" data-tab="depenses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Budget 500€</button>
   <button data-act="tab" data-tab="nous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4"/></svg>Loisirs</button>
   <button data-act="tab" data-tab="cagnotte"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.6 10a2.4 2.4 0 0 1 2.4-1.5h.4a2 2 0 0 1 0 4h-.8a2 2 0 0 0 0 4H13a2.4 2.4 0 0 0 2.4-1.5"/></svg>Cagnotte</button>
   <button data-act="tab" data-tab="revenus"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Revenus</button>
@@ -380,13 +380,13 @@ var timers={},busy={},dirty={};
 function ymLabel(s){var p=s.split('-');return MOIS[+p[1]-1]+' '+p[0]}
 function shiftYm(s,k){var p=s.split('-');var d=new Date(+p[0],+p[1]-1+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function clone(o){return JSON.parse(JSON.stringify(o))}
-function normNous(n){n=n||{};return {ledger:Array.isArray(n.ledger)?n.ledger:[],pots:(n.pots&&typeof n.pots==='object'&&!Array.isArray(n.pots))?n.pots:{},del:Array.isArray(n.del)?n.del:[]}}
+function normNous(n){n=n||{};return {custom:Array.isArray(n.custom)?n.custom:[],ledger:Array.isArray(n.ledger)?n.ledger:[],pots:(n.pots&&typeof n.pots==='object'&&!Array.isArray(n.pots))?n.pots:{},del:Array.isArray(n.del)?n.del:[]}}
 function nsd(){if(!state.config.nous)state.config.nous=normNous();return state.config.nous}
 function cfgMerge(l,r,rNewer){var w=clone(rNewer?r:l),o=rNewer?l:r,a=normNous(w.nous),b=normNous(o.nous),dead={};
   a.del.concat(b.del).forEach(function(k){dead[k]=1});
   function un(x,y){var out=(x||[]).filter(function(e){return !dead[e.id]}),h={};out.forEach(function(e){h[e.id]=1});(y||[]).forEach(function(e){if(!h[e.id]&&!dead[e.id])out.push(e)});return out}
   a.ledger=un(a.ledger,b.ledger);Object.keys(b.pots).forEach(function(k){a.pots[k]=un(a.pots[k],b.pots[k])});Object.keys(a.pots).forEach(function(k){a.pots[k]=un(a.pots[k],[])});
-  a.del=Object.keys(dead).slice(-500);w.nous=a;return w}
+  a.custom=un(a.custom,b.custom);a.del=Object.keys(dead).slice(-500);w.nous=a;return w}
 function normCfg(d){
   var c=clone(d||{});
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
@@ -652,7 +652,7 @@ function vSynth(m,c){
   '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div><div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
     '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
-  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges</h2>'+
+  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges fixes</h2>'+
     '<div class="line" style="border:0"><span class="small muted">'+(nK-unpK)+' / '+nK+' lignes</span><span class="n small">'+fmt(c.kPaid)+' / '+fmt(c.kPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>'+
   (nX?'<section class="card tap" role="button" data-act="tab" data-tab="extra"><h2>Charges extra</h2><div class="line" style="border:0"><span class="small muted">'+(nX-unpX)+' / '+nX+' lignes</span><span class="n small">'+fmt(c.xPaid)+' / '+fmt(c.xPlanned)+'</span></div></section>':'');
 }
@@ -966,7 +966,7 @@ function bsSheet(t){
   if(g.length)return h+'<div class="small muted">Cette opération est rattachée à '+g.length+' achat'+(g.length>1?'s':'')+' (débit groupé). Pour la modifier, utilise « Défaire le rapprochement » dans Dépenses.</div><button class="btn" style="margin-top:8px" data-bs="close">Fermer</button></div>';
   h+='<div class="small muted" style="margin-bottom:8px">'+(ex?'Actuellement : dépense · '+esc(ex.cat):(fx?'Actuellement : charge « '+esc(fx.label)+' » cochée':'Pas encore comptée en dépense'))+'</div>';
   h+='<input type="text" id="bs-label" class="full" value="'+esc(ex?ex.label:bkClean(t.label))+'" aria-label="Libellé" style="margin-bottom:8px">'+
-    '<select id="bs-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===(ex?ex.cat:'Autre')?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
+    '<select id="bs-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===(ex?ex.cat:'Courses')?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
     (fx?'<p class="small neg" style="margin:0 0 8px">La charge « '+esc(fx.label)+' » sera décochée.</p>':'')+
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-bs="save">'+(ex?'Enregistrer':'Compter en dépense')+'</button>'+
     (m&&lkLines(m).length?'<button class="btn" data-bs="link">Rattacher à des achats saisis</button>':'')+
@@ -1156,8 +1156,7 @@ function bkClassify(t){
     return {k:'credit'};
   }
   for(var i=0;i<BK_FIX.length;i++)if(BK_FIX[i][1].test(L))return {k:'fixed',tid:BK_FIX[i][0]};
-  var cat='Autre';for(var j=0;j<BK_CAT.length;j++)if(BK_CAT[j][1].test(L)){cat=BK_CAT[j][0];break}
-  return {k:'extra',cat:cat};
+  return {k:'extra',cat:'Courses'};
 }
 function bankSync(){
   var s={ticked:0,pafs:0,credits:0,extras:0},touched={};
@@ -1182,7 +1181,7 @@ function bankSync(){
       if(tg){
         if(BK_PART[c.tid]&&tg.planned-amt>0.5){mm.fixed.push({id:uid(),tid:tg.tid,label:/\(solde\)/.test(tg.label)?tg.label:tg.label+' (solde)',group:tg.group,planned:Math.round((tg.planned-amt)*100)/100,actual:Math.round((tg.planned-amt)*100)/100,paid:false});tg.planned=amt}
         tg.paid=true;tg.actual=amt;tg.bank=true;s.ticked++;done=true}
-      if(!done)c={k:'extra',cat:'Autre'};
+      if(!done)c={k:'extra',cat:'Courses'};
     }else if(c.k==='paf'){
       var cr=null;
       for(i=0;i<m.credits.length&&!cr;i++){var x=m.credits[i];if(x.done)continue;
@@ -1277,7 +1276,7 @@ function vNous(m,c,pg){
     '<label class="small muted" style="display:block">Avancé par'+sel('by',['h','l'],'h')+'</label>'+
     '<label class="small muted" style="display:block">À rembourser par'+sel('owe',['l','h','b'],'l')+'</label>'+
     '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
-  var pots=state.config.fixed.filter(function(t){return t.group==='Famille'&&!/karama|delphin/i.test(t.label)}).map(function(t){
+  var pots=state.config.fixed.filter(function(t){return t.group==='Famille'&&!/karama|delphin/i.test(t.label)}).concat(N.custom.map(function(c){return {id:c.id,label:c.label,cus:1}})).map(function(t){
     var paid={},adj=(N.pots[t.id]||[]).slice(),adjm={};
     Object.keys(state.months).forEach(function(k){(state.months[k].fixed||[]).forEach(function(x){if(x.tid===t.id&&x.paid)paid[k]=(paid[k]||0)+num(x.actual)})});
     adj.forEach(function(e){var k=String(e.date||'').slice(0,7);adjm[k]=(adjm[k]||0)+num(e.amount)});
@@ -1286,7 +1285,7 @@ function vNous(m,c,pg){
     var tr=tbl.slice(-6).reverse().map(function(r){return '<div class="line"><span class="small">'+esc(ymLabel(r.k))+'</span><span class="n small"><span class="pos">'+(r.v?'+'+fmt(r.v):'—')+'</span> · <span class="'+(r.w<0?'neg':'')+'">'+(r.w?sgn(r.w):'—')+'</span> · <b>'+fmt(r.s)+'</b></span></div>'}).join('');
     var ents=adj.sort(function(a,b){return String(b.date).localeCompare(String(a.date))}).slice(0,8).map(function(e){
       return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span></span></span><span class="n '+(e.amount<0?'neg':'pos')+'">'+sgn(e.amount)+' <button class="x" data-ns="pdel" data-pid="'+esc(t.id)+'" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
-    return '<section class="card"><h2>Cagnotte · '+esc(t.label)+'</h2><div class="big '+(run<0?'neg':'')+'" style="font-size:28px">'+fmt(run)+'</div><div class="small muted" style="margin:4px 0 8px">Versements cochés payés − retraits · Mois : versé · retrait · solde</div>'+(tr||'<div class="empty">Aucun versement pour l’instant.</div>')+
+    return '<section class="card"><h2>Cagnotte · '+esc(t.label)+(t.cus?' <button class="x" data-ns="cdel" data-id="'+esc(t.id)+'" aria-label="Supprimer la cagnotte">×</button>':'')+'</h2><div class="big '+(run<0?'neg':'')+'" style="font-size:28px">'+fmt(run)+'</div><div class="small muted" style="margin:4px 0 8px">Versements cochés payés − retraits · Mois : versé · retrait · solde</div>'+(tr||'<div class="empty">Aucun versement pour l’instant.</div>')+
       adIn('Retirer / ajouter')+'<form class="form" data-form="ns-pot"><input type="hidden" name="pid" value="'+esc(t.id)+'">'+
       '<select name="kind" aria-label="Type"><option value="out">Retrait (utilisé)</option><option value="in">Ajout (correction)</option></select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
@@ -1294,7 +1293,7 @@ function vNous(m,c,pg){
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
       '<button class="btn primary add" type="submit">Enregistrer</button></form></div></div>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
   if(!pg)return head+list+form;
-  return (pots||'<section class="card"><h2>Cagnottes famille</h2><div class="empty">Aucune charge fixe suivie dans le groupe « Famille ».</div></section>');
+  return (pots||'<section class="card"><h2>Cagnottes</h2><div class="empty">Aucune cagnotte.</div></section>')+adOpen('cag','Nouvelle cagnotte')+'<form class="form" data-form="ns-cag"><input type="text" name="label" placeholder="Nom (ex. Vacances)" required class="full" aria-label="Nom"><input type="text" name="amount" inputmode="decimal" placeholder="Solde de départ (optionnel)" class="full" aria-label="Solde de départ"><button class="btn primary add" type="submit">Créer</button></form></div></section>';
 }
 var anLast={};
 function render(){
@@ -1434,6 +1433,7 @@ document.addEventListener('click',function(e){
 document.addEventListener('click',function(e){
   var t=e.target.closest('button[data-ns]');if(!t)return;var N=nsd(),id=t.dataset.id;
   if(t.dataset.ns==='del'){N.ledger=N.ledger.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
+  else if(t.dataset.ns==='cdel'){if(!confirm('Supprimer cette cagnotte et son historique ?'))return;N.custom=N.custom.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
   else if(t.dataset.ns==='pdel'){var pl=N.pots[t.dataset.pid]||[];N.pots[t.dataset.pid]=pl.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
 });
 document.addEventListener('submit',function(e){
@@ -1449,6 +1449,7 @@ document.addEventListener('submit',function(e){
   else if(k==='ns-add'){var by=fd.get('by'),ow=fd.get('owe');
     if(ow!=='b'&&ow===by){nsErr='Celui qui avance ne peut pas être celui qui rembourse.';render();return}
     nsErr='';nsd().ledger.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:amount,by:by,owe:ow,done:false});commitCfg()}
+  else if(k==='ns-cag'){var cid='cg-'+uid(),NN=nsd();NN.custom.push({id:cid,label:label.slice(0,40)});if(amount)NN.pots[cid]=[{id:uid(),label:'Solde de départ',date:d0.toISOString().slice(0,10),amount:amount}];commitCfg()}
   else if(k==='ns-pot'){var pid=String(fd.get('pid')||''),pl=nsd().pots[pid]||(nsd().pots[pid]=[]);
     pl.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:(fd.get('kind')==='in'?1:-1)*Math.abs(amount)});commitCfg()}
   else if(k==='add-rec'){var un=String(fd.get('until')||''),nm=null;if(/^\d{4}-\d{2}$/.test(un)){var pa=ym.split('-'),pb=un.split('-');nm=(+pb[0]-+pa[0])*12+(+pb[1]-+pa[1])+1;if(nm<1)nm=null}
