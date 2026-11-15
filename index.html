@@ -1358,15 +1358,61 @@ function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n
   r.bankSeen=Object.assign({},o.bankSeen||{},r.bankSeen||{});return r}
 function syAdopt(id,data){if(id==='config')state.config=normCfg(data);else state.months[id.slice(2)]=normMonth(data,id.slice(2))}
 function syFail(){sy.busy=false;sy.err='1';paintStatus()}
+var SY_LISTS=['fixed','credits','extras','shared'],SY_IGN={_ts:1,del:1,bankSeen:1,id:1},SY_F={label:'libellé',planned:'prévu',actual:'réel',amount:'montant',v:'montant',paid:'payé',done:'réglé',date:'date',by:'par',settled:'soldé'},SY_K={incomes:'Revenus nets',courses:'Budget courses',resto:'Ticket-resto',fixed:'Charges types',credits:'Versements types',contributors:'Contributeurs',firstPayment:'Premier versement',salaryFirst:'Salaire'};
+function syDesc(x){var n=x.label||x.name||x.id||'?',v=[x.actual,x.planned,x.amount,x.v].filter(function(z){return typeof z==='number'})[0];return esc(String(n))+(v!=null?' · '+fmt(v):'')}
+function syShow(v){return v===true?'oui':(v===false?'non':(typeof v==='number'?fmt(v):(v==null?'—':esc(String(v)))))}
+function syChg(a,b){return Object.keys(SY_F).filter(function(f){return JSON.stringify(a[f])!==JSON.stringify(b[f])}).slice(0,3).map(function(f){return SY_F[f]+' '+syShow(a[f])+' → '+syShow(b[f])}).join(' · ')}
+function syDiff(l,r,dir,lNewer){
+  var out=[];
+  SY_LISTS.forEach(function(k){var A={},B={};(l[k]||[]).forEach(function(x){A[syKey(x,k)]=x});(r[k]||[]).forEach(function(x){B[syKey(x,k)]=x});
+    var seen={};Object.keys(A).concat(Object.keys(B)).forEach(function(key){if(seen[key])return;seen[key]=1;var x=A[key],y=B[key];
+      if(x&&!y)out.push(dir==='pull'?['−','←','Supprimé ici : '+syDesc(x)]:['+','→',syDesc(x)]);
+      else if(!x&&y)out.push(dir==='push'?['−','→','Supprimé chez l’autre : '+syDesc(y)]:['+','←',syDesc(y)]);
+      else if(JSON.stringify(x)!==JSON.stringify(y)){var up=dir==='push'||(dir==='merge'&&lNewer);out.push(['~',up?'→':'←',syDesc(up?x:y)+' : '+(up?syChg(y,x):syChg(x,y))])}})});
+  var keys={};Object.keys(l).concat(Object.keys(r)).forEach(function(k){if(SY_LISTS.indexOf(k)<0&&!SY_IGN[k])keys[k]=1});
+  Object.keys(keys).forEach(function(k){if(JSON.stringify(l[k])!==JSON.stringify(r[k])){var up=dir==='push'||(dir==='merge'&&lNewer);out.push(['~',up?'→':'←',esc(SY_K[k]||k)+' modifié'])}});
+  return out}
+function syPlan(rem){
+  var meta=syMeta(),ids={},plan=[];
+  syIds().concat(Object.keys(rem)).forEach(function(id){ids[id]=1});
+  Object.keys(ids).forEach(function(id){
+    var l=docFor(id),r=rem[id],dir,lt,rt,m0=meta[id]||0,items;
+    if(!r){if(l)plan.push({id:id,dir:'push',isNew:1,items:syDiff(l,{},'push')});return}
+    rt=r.ts||0;lt=l?(l._ts||0):-1;
+    if(!l){plan.push({id:id,dir:'pull',isNew:1,items:syDiff({},r.data,'pull')});return}
+    if(rt===lt)return;
+    dir=(lt>m0&&rt>m0)?'merge':(rt>lt?'pull':'push');
+    items=syDiff(l,r.data,dir,lt>=rt);
+    if(items.length)plan.push({id:id,dir:dir,items:items})});
+  return plan}
+function syPreview(plan,ok,cancel){
+  var old=document.getElementById('syov');if(old)old.remove();
+  var ov=document.createElement('div');ov.id='syov';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  var nI=plan.reduce(function(n,q){return n+q.items.length},0),body=plan.map(function(q,i){
+    var t=q.id==='config'?'Réglages':ymLabel(q.id.slice(2)),dl={push:'Envoi',pull:'Réception',merge:'Fusion'}[q.dir]+(q.isNew?' · nouveau':'');
+    return '<div style="border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px"><label style="display:flex;align-items:center;gap:10px;font-weight:600"><input type="checkbox" data-sy="'+i+'" checked style="width:18px;height:18px"><span style="flex:1">'+esc(t)+'</span><span class="small muted" style="font-weight:400">'+dl+'</span></label>'+
+      (q.isNew&&q.items.length>6?'<div class="small muted" style="margin-top:6px">Premier envoi complet : '+q.items.length+' éléments</div>':q.items.length?q.items.slice(0,30).map(function(it){return '<div class="small" style="margin-top:6px;display:flex;gap:8px"><span style="flex:0 0 auto;font-family:var(--mono);color:'+(it[0]==='+'?'var(--good)':(it[0]==='−'?'var(--bad)':'var(--warn)'))+'">'+it[0]+it[1]+'</span><span>'+it[2]+'</span></div>'}).join('')+(q.items.length>30?'<div class="small muted" style="margin-top:6px">… et '+(q.items.length-30)+' autres</div>':''):'<div class="small muted" style="margin-top:6px">Aucune ligne modifiée</div>')+'</div>'}).join('');
+  ov.innerHTML='<div style="background:var(--page);color:var(--ink);width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 16px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.4)"><h2 style="margin:0 0 4px">À synchroniser</h2><p class="small muted" style="margin:0 0 12px">'+nI+' modification'+(nI>1?'s':'')+' · → envoyé à l’autre téléphone · ← reçu. Décoche ce que tu ne veux pas synchroniser.</p>'+body+'<div style="display:flex;gap:8px;position:sticky;bottom:-22px;margin:0 -16px -22px;padding:10px 16px 22px;background:var(--page)"><button class="btn" data-sy-c="1" style="flex:1">Annuler</button><button class="btn primary" data-sy-ok="1" style="flex:2">Confirmer</button></div></div>';
+  ov.addEventListener('click',function(ev){var t=ev.target;
+    if(t.closest('[data-sy-c]')||t===ov){ov.remove();cancel()}
+    else if(t.closest('[data-sy-ok]')){var skip={};Array.prototype.forEach.call(ov.querySelectorAll('input[data-sy]'),function(c){if(!c.checked)skip[plan[+c.dataset.sy].id]=1});ov.remove();ok(skip)}});
+  document.body.appendChild(ov)}
 function doSync(silent){
   if(sy.busy||col)return;
   if(!bank.token){if(!silent){state.tab='banque';bank.msg='Connecte-toi (onglet Banque) pour synchroniser les deux téléphones.';render()}return}
   sy.busy=true;sy.err='';paintStatus();
   bankCall('/sync').then(function(x){
     if(!x.ok)throw new Error('get');
-    var rem=x.d.docs||{},meta=syMeta(),push={},ids={};
+    var rem=x.d.docs||{},plan=syPlan(rem);
+    if(!plan.length||silent)return syApply(rem,silent,null);
+    syPreview(plan,function(skip){syApply(rem,false,skip).catch(syFail)},function(){sy.busy=false;paintStatus()})
+  }).catch(syFail);
+}
+function syApply(rem,silent,skip){
+    var meta=syMeta(),push={},ids={};
     syIds().concat(Object.keys(rem)).forEach(function(id){ids[id]=1});
     Object.keys(ids).forEach(function(id){
+      if(skip&&skip[id])return;
       var l=docFor(id),r=rem[id];
       if(!r){if(l)push[id]={ts:l._ts||0,data:l};return}
       var rt=r.ts||0,lt=l?(l._ts||0):-1,m0=meta[id]||0;
@@ -1377,11 +1423,10 @@ function doSync(silent){
       push[id]={ts:lt,data:l};
     });
     var done=function(){try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();sy.busy=false;sy.ok=true;syLast=Date.now();if(silent&&typing())paintStatus();else render()};
-    if(!Object.keys(push).length){done();return}
+    if(!Object.keys(push).length){done();return Promise.resolve()}
     return bankCall('/sync',{method:'POST',body:JSON.stringify({docs:push})}).then(function(y){
       if(!y.ok)throw new Error('post');
       Object.keys(push).forEach(function(id){meta[id]=push[id].ts});done()});
-  }).catch(syFail);
 }
 function vMore(){return '<section class="card"><h2>Plus</h2>'+[['revenus','Revenus','Versements et part de chacun'],['historique','Historique','Mois passés et tendance'],['modele','Modèle','Charges types, revenus, réglages'],['banque','Banque','Connexion Fortuneo, synchro, opérations']].map(function(x){return '<button class="menu" data-act="tab" data-tab="'+x[0]+'"><span><b>'+x[1]+'</b><small class="muted">'+x[2]+'</small></span><span class="muted">›</span></button>'}).join('')+'</section>'}
 var nsErr='',NSN={h:'Hasina',l:'Linda',b:'Compte joint'};
