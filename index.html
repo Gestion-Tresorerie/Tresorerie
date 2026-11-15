@@ -317,6 +317,7 @@ body{padding-bottom:28px}
 .dbrand{display:flex;align-items:center;gap:10px;padding:4px 20px 16px;font-size:16px}.dbrand img{width:38px;height:38px;display:block}
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:15}
 .menu-open #scrim{opacity:1;pointer-events:auto}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.brow>.btn{width:100%;margin:0;padding-left:6px;padding-right:6px;text-align:center;line-height:1.25}.brow>.btn:last-child:nth-child(odd){grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -763,15 +764,15 @@ function vLink(m){
     (!T.length&&!U.length?'<div class="empty">Aucun débit Fortuneo à relier ce mois-ci.</div>':'')+'</section>',h=tx?'':h1;
   if(tx){
     var ids=Object.keys(lk.sel).filter(function(k){return lk.sel[k]}),tot=sum(L.concat(X).filter(function(x){return lk.sel[x.id]}),lkA),gap=Math.round((tx.amount-tot)*100)/100;
-    h+='<section class="card"><h2>Cocher les achats</h2><div class="todo on"><span><b>'+esc(tx.label)+'</b><small class="muted">'+esc(tx.date||'')+'</small></span><span class="n neg">'+fmt(tx.amount)+'</span></div><button class="btn" data-lk="chg" style="margin:6px 0 10px">Changer de débit</button>'+(!L.length&&!X.length?'<div class="empty">Aucun achat saisi ni extra prévu à relier : ajoute-les d’abord.</div>':'')+L.map(function(x){
+    h+='<section class="card"><h2>Cocher les achats</h2><div class="todo on"><span><b>'+esc(tx.label)+'</b><small class="muted">'+esc(tx.date||'')+'</small></span><span class="n neg">'+fmt(tx.amount)+'</span></div><button class="btn" data-lk="chg" style="width:100%;margin:6px 0 10px">Changer de débit</button>'+(!L.length&&!X.length?'<div class="empty">Aucun achat saisi ni extra prévu à relier : ajoute-les d’abord.</div>':'')+L.map(function(x){
       return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">'+esc(x.date||'')+'</small></span><span class="n">'+fmt(x.amount)+'</span></div>'}).join('')+
       (X.length?'<div class="grp" style="margin-top:14px"><b>Extras prévus</b></div>'+X.map(function(x){
         return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">extra · prévu</small></span><span class="n">'+fmt(x.planned)+'</span></div>'}).join(''):'')+
       '<div class="brk"><div class="mini"><span>Achats cochés</span><span class="n">'+fmt(tot)+'</span></div><div class="mini"><span>Débit</span><span class="n">'+fmt(tx.amount)+'</span></div>'+
       '<div class="mini"><span>Écart</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(gap))+'</span></div></div>'+
       (Math.abs(gap)>=0.015&&ids.length?'<p class="small muted" style="margin:8px 0 0">L’écart sera ajouté au dernier élément coché pour que le total colle au débit.</p>':'')+
-      '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn primary" data-lk="ok"'+(ids.length?'':' disabled')+'>Valider le rapprochement</button><button class="btn" data-lk="cancel">Annuler</button></div></section>'}
-  else h+='<button class="btn" data-lk="cancel">Annuler</button>';
+      '<div class="brow" style="margin-top:12px"><button class="btn primary" data-lk="ok"'+(ids.length?'':' disabled')+'>Valider le rapprochement</button><button class="btn" data-lk="cancel">Annuler</button></div></section>'}
+  else h+='<div class="brow"><button class="btn" data-lk="cancel">Annuler</button></div>';
   return h}
 function fxCands(m,x){
   return (bank.tx||[]).filter(function(t){return t.id&&!t.pending&&t.amount<0&&bkMonthKey(t)===ym&&!bsGrp(t).length&&!bsFixed(t,m)})
@@ -781,7 +782,7 @@ function fxSheet(x,m){
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px"><div class="small muted" style="margin-bottom:6px">Choisis l’opération Fortuneo qui correspond à « '+esc(x.label)+' » ('+fmt(x.planned)+')</div>'+
     (L.length?L.map(function(t){var ex=Math.abs(Math.abs(t.amount)-x.planned)<0.015;
       return '<div class="todo tap" role="button" data-fx="link" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+(ex?' ✓':'')+'</b><small class="muted">'+esc(t.date||'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération disponible ce mois-ci.</div>')+
-    '<button class="btn" style="margin-top:8px" data-fx="close">Fermer</button></div>'}
+    '<button class="btn" style="margin-top:8px;width:100%" data-fx="close">Fermer</button></div>'}
 var fixLast=0;
 function vSharedSyn(){
   var S=(getM(ym).shared||[]);if(!S.length)return '';
@@ -982,7 +983,7 @@ function bsSheet(t){
   h+='<input type="text" id="bs-label" class="full" value="'+esc(ex?ex.label:bkClean(t.label))+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="bs-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===(ex?ex.cat:'Courses')?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
     (fx?'<p class="small neg" style="margin:0 0 8px">La charge « '+esc(fx.label)+' » sera décochée.</p>':'')+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-bs="save">'+(ex?'Enregistrer':'Compter en dépense')+'</button>'+
+    '<div class="brow"><button class="btn primary" data-bs="save">'+(ex?'Enregistrer':'Compter en dépense')+'</button>'+
     (m&&lkLines(m).length?'<button class="btn" data-bs="link">Rattacher à des achats saisis</button>':'')+
     '<button class="btn" data-bs="close">Fermer</button></div></div>';
   return h}
@@ -993,13 +994,13 @@ function vPick(m){
   return '<section class="card"><h2>Opérations non comptées en dépense</h2>'+(L.length?L.map(function(t){
     var fx=bsFixed(t,m);
     return '<div class="todo tap'+(bs.id===t.id?' on':'')+'" role="button" data-bs="open" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+'</b><small class="muted">'+esc(t.date||'')+(fx?' · charge cochée':'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'+(bs.id===t.id?bsSheet(t):'')}).join(''):'<div class="empty">Toutes les sorties du mois sont déjà comptées.</div>')+
-    '<button class="btn" style="margin-top:10px" data-bs="pick">Fermer</button></section>'}
+    '<button class="btn" style="margin-top:10px;width:100%" data-bs="pick">Fermer</button></section>'}
 var edErr='';
 function edSheet(e){
   var f=!!e.bankId,sp='';
   if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),xf=mm.fixed.filter(function(y){return y.group==='Extra'&&!y.paid}),so=(mm.shared||[]),fl=mm.fixed.filter(function(y){return y.group!=='Extra'&&!y.paid&&!y.grp});
     var cl=!col&&bank.token;
-    var btns='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn'+(ed.mode==='rep'?' primary':'')+'" data-ed="mode" data-m="rep">Répartir</button>'+'<button class="btn'+(ed.mode==='lnk'?' primary':'')+'" data-ed="mode" data-m="lnk">Relier à une charge</button></div>',
+    var btns='<div class="brow"><button class="btn'+(ed.mode==='rep'?' primary':'')+'" data-ed="mode" data-m="rep">Répartir</button>'+'<button class="btn'+(ed.mode==='lnk'?' primary':'')+'" data-ed="mode" data-m="lnk">Relier à une charge</button></div>',
       lrow=function(k,y,amt,sub){var key=k+':'+y.id,on=ed.sel&&ed.sel[key];return '<div class="todo tap" role="button" data-ed="lnktog" data-id="'+key+'"><span><b>'+(on?'☑':'☐')+' '+esc(y.label)+'</b><small class="muted">'+esc(sub||'')+'</small></span><span class="n">'+fmt(amt)+'</span></div>'},
       lgrp=function(t,arr,k,g,sub){return arr.length?'<div class="grp" style="margin-top:10px"><b>'+t+'</b></div>'+arr.map(function(y){return lrow(k,y,g(y),sub(y))}).join(''):''},
       lsel=Object.keys(ed.sel||{}).filter(function(k){return ed.sel[k]}),
@@ -1010,14 +1011,14 @@ function edSheet(e){
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><span class="small muted" style="flex:1.5">Payeur si nouvelle 50/50</span><select id="sp-by" aria-label="Payeur" style="flex:.7;min-width:0"><option value="b">Compte joint</option><option value="h">'+esc(nsName('h'))+'</option><option value="l">'+esc(nsName('l'))+'</option></select></div>'+
-    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-fx" aria-label="Charge fixe" style="flex:1.5;min-width:0"><option value="">Charge fixe : aucune</option>'+fl.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</select><input type="text" id="sp-fa" inputmode="decimal" placeholder="€" aria-label="Somme charge fixe" style="flex:.7;min-width:0"></div><button class="btn primary" style="width:100%" data-ed="split">Valider la répartition</button>':(ed.mode==='lnk'?lnkl:''))+
-    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+((e.spl&&e.spl.length)?'<div style="margin:8px 0"><button class="btn" style="width:100%" data-ed="unsplit">Défaire la répartition</button></div>':'')+'</div>'}
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-fx" aria-label="Charge fixe" style="flex:1.5;min-width:0"><option value="">Charge fixe : aucune</option>'+fl.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</select><input type="text" id="sp-fa" inputmode="decimal" placeholder="€" aria-label="Somme charge fixe" style="flex:.7;min-width:0"></div><button class="btn primary" style="width:100%;margin:2px 0 8px" data-ed="split">Valider la répartition</button>':(ed.mode==='lnk'?lnkl:''))+
+    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+((e.spl&&e.spl.length)?'<div class="brow"><button class="btn" data-ed="unsplit">Défaire la répartition</button></div>':'')+'</div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
     '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="ed-amount" inputmode="decimal" value="'+inp(e.amount)+'"'+(f?' disabled':'')+' aria-label="Montant" style="flex:1;min-width:0"><input type="date" id="ed-date" value="'+esc(e.date||'')+'"'+(f?' disabled':'')+' aria-label="Date" style="flex:1;min-width:0"></div>'+
     (f?'<p class="small muted" style="margin:0 0 8px">Opération Fortuneo : montant et date non modifiables.</p>':'')+sp+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+(f&&ed.mode?'':'<button class="btn primary" data-ed="save">Enregistrer</button>')+'<button class="btn" data-ed="close"'+(f&&ed.mode?' style="grid-column:1/-1"':'')+'>Fermer</button></div></div>'}
+    '<div class="brow">'+(f&&ed.mode?'':'<button class="btn primary" data-ed="save">Enregistrer</button>')+'<button class="btn" data-ed="close">Fermer</button></div></div>'}
 function bkChip(t){var c=bkClassify(t),o='';
   if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
   else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
