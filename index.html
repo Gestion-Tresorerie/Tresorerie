@@ -994,10 +994,10 @@ function vPick(m){
 var edErr='';
 function edSheet(e){
   var f=!!e.bankId,sp='';
-  if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),so=(mm.shared||[]);
+  if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),xf=mm.fixed.filter(function(y){return y.group==='Extra'&&!y.paid}),so=(mm.shared||[]);
     var opt=function(arr,g){return arr.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(g(y))+'</option>'}).join('')};
-    sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Choisis la cible et la somme à rattacher (vide = montant de la ligne choisie).</p>'+
-    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option><option value="new">Extra : nouveau</option>'+opt(xo,function(y){return y.amount})+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
+    sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Rattache à un extra existant (crée-le d’abord dans Charges extra) et saisis la somme (vide = montant de la ligne choisie).</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
     (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<button class="btn" data-ed="split">Répartir</button></div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
@@ -1087,13 +1087,15 @@ document.addEventListener('click',function(e){
   else if(a==='close'){ed.id=null;render()}
   else if(a==='split'){var m0=editM(ym),x0=findBy(m0.extras,ed.id);if(!x0)return;var r2=function(v){return Math.round(v*100)/100};
     var xs=$('#sp-xt').value,ss=$('#sp-sh').value,xa=xs?num($('#sp-xa').value):0,sa=ss?num($('#sp-sa').value):0;
-    if(xs&&xs!=='new'&&!xa){var q0=findBy(m0.extras,xs);xa=q0?Math.min(q0.amount,x0.amount):0}
+    var xk=xs.slice(0,1),xid=xs.slice(2),xq=xs?(xk==='f'?findBy(m0.fixed,xid):findBy(m0.extras,xid)):null;
+    if(xs&&!xq){edErr='Extra introuvable.';render();return}
+    if(xq&&!xa)xa=Math.min(xk==='f'?xq.planned:xq.amount,x0.amount);
     if(ss&&ss!=='new'&&!sa){var q1=findBy(m0.shared,ss);sa=q1?Math.min(q1.v,x0.amount):0}
     xa=r2(xa);sa=r2(sa);
     if(xa+sa<0.005){edErr='Indique une cible et une somme.';render();return}
     if(xa+sa>x0.amount+0.005){edErr='Somme trop élevée : il reste '+fmt(x0.amount)+' sur cette opération.';render();return}
     if(!x0.tot)x0.tot=x0.amount;
-    if(xa){if(xs==='new')m0.extras.push({id:uid(),label:x0.label,cat:'Extra',amount:xa,date:x0.date,from:x0.bankId});else{var q2=findBy(m0.extras,xs);if(q2)q2.bk=r2((q2.bk||0)+xa)}}
+    if(xa&&xq){xq.bk=r2((xq.bk||0)+xa);if(xk==='f'){xq.paid=true;xq.actual=xa;xq.bank=true}}
     if(sa){if(ss==='new')m0.shared.push({id:uid(),label:x0.label,v:sa,date:x0.date,by:'b',settled:false,from:x0.bankId});else{var q3=findBy(m0.shared,ss);if(q3)q3.bk=r2((q3.bk||0)+sa)}}
     x0.amount=r2(x0.amount-xa-sa);edErr='';ed.id=null;commitM()}
   else if(a==='save'){var m=editM(ym),x=findBy(m.extras,ed.id);if(!x)return;
