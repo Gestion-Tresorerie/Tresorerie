@@ -362,7 +362,7 @@ var GROUPS=['Logement','Voiture','Énergie & télécom','Enfants & école','Fami
 var GMAP={loyer:'Logement','ass-hab':'Logement','credit-regroupe':'Voiture',leasing:'Voiture','ass-tcross':'Voiture','ass-bmw':'Voiture','caf-dette':'Ponctuel'};
 function ngrp(g,tid,lb){if(tid&&GMAP[tid])return GMAP[tid];if(!tid&&lb&&g!=='Extra'){if(/dette caf|compensation/i.test(lb))return 'Ponctuel';if(/t-?cross|bmw|sofinco|cr[ée]dit regroup|leasing/i.test(lb))return 'Voiture';if(/loyer|habitation/i.test(lb))return 'Logement'}return g==='Divers'?'Ponctuel':g}
 var RESTO='Ticket resto';
-var CATS=['Courses','Ticket resto','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
+var CATS=['Courses','Extra','Ticket resto','Enfants & école','Santé','Loisirs','Transport','Exceptionnel','Autre'];
 var STATUS={
   loading:{cls:'',txt:'Chargement…'}, saved:{cls:'ok',txt:'Enregistré'}, saving:{cls:'',txt:'Enregistrement…'},
   local:{cls:'warn',txt:'Local à cet appareil'}, stale:{cls:'warn',txt:'Données peut-être anciennes'},
@@ -480,10 +480,10 @@ function calc(m){
   r.kPlanned=sum(FK,function(x){return x.planned});r.kPaid=sum(FK,function(x){return x.paid?x.actual:0});r.kRemain=sum(FK,function(x){return x.paid?0:x.planned});
   r.xPlanned=sum(FX,function(x){return x.planned});r.xPaid=sum(FX,function(x){return x.paid?x.actual:0});r.xRemain=sum(FX,function(x){return x.paid?0:x.planned});
   r.coursesPlanned=m.courses.planned||0;
-  r.coursesSpent=sum(m.extras.filter(function(e){return e.cat==='Courses'}),function(e){return e.amount});
+  r.coursesSpent=sum(m.extras.filter(function(e){return e.cat==='Courses'||e.cat==='Extra'}),function(e){return e.amount});
   r.restoPlanned=restoOf(m);
   r.restoSpent=sum(m.extras.filter(function(e){return e.cat===RESTO}),function(e){return e.amount});
-  r.otherExtras=sum(m.extras.filter(function(e){return e.cat!=='Courses'&&e.cat!==RESTO}),function(e){return e.amount});
+  r.otherExtras=sum(m.extras.filter(function(e){return e.cat!=='Courses'&&e.cat!=='Extra'&&e.cat!==RESTO}),function(e){return e.amount});
   r.extrasTotal=r.coursesSpent+r.otherExtras;
   r.coursesProj=Math.max(r.coursesPlanned,r.coursesSpent);
   r.marginPlanned=r.creditsPlanned-r.fixedPlanned-r.coursesPlanned;
@@ -790,6 +790,17 @@ function vSharedSyn(){
     '<div class="kp3"><div class="kpi"><div class="l">Part de chacun</div><div class="v">'+fmt(r2(tot/2))+'</div></div><div class="kpi"><div class="l">Payé '+esc(H)+'</div><div class="v">'+fmt(ph)+'</div></div><div class="kpi"><div class="l">Payé '+esc(L)+'</div><div class="v">'+fmt(pl)+'</div></div></div>'+
     (pb?'<div class="tags" style="margin-top:8px"><span class="tag">Compte joint '+fmt(pb)+'</span></div>':'')+'</section>';
 }
+function vXhg(){
+  var m=getM(ym),L=m.extras.filter(function(e){return e.cat==='Extra'}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
+  var tot=Math.round(sum(L,function(e){return num(e.amount)})*100)/100,today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
+  var rows=L.map(function(e){return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span>'+((e.from||e.bk)?'<span class="tag tb">Fortuneo</span>':'')+'</span></span><span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
+  return '<section class="card"><h2>Extras imputés sur l’enveloppe · '+fmt(tot)+'</h2><p class="small muted" style="margin:0 0 6px">Réduisent le reste de l’enveloppe du Budget 500€, sans ajouter de charge au budget global ni aux PAF.</p>'+(rows||'<div class="empty">Aucun extra ce mois-ci.</div>')+'</section>'+
+    adOpen('xhg','Ajouter un extra (enveloppe)')+'<form class="form" data-form="add-extra"><input type="hidden" name="cat" value="Extra">'+
+    '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required class="full" aria-label="Libellé">'+
+    '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
+    '<input type="date" name="date" value="'+def+'" aria-label="Date">'+
+    '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
+}
 function vShared(){
   var m=getM(ym),S=(m.shared||[]).slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var H=nsName('h'),L=nsName('l'),r2=function(x){return Math.round(x*100)/100};
@@ -801,7 +812,7 @@ function vShared(){
     (pb?'<div class="tags" style="margin-top:8px"><span class="tag">Compte joint '+fmt(pb)+'</span></div>':'')+'<p class="small muted" style="margin:10px 0 0">Non compté dans le budget, les PAF ni les extras.</p></section>';
   var rows=S.map(function(x){var j=x.by==='b';
     return '<div class="row'+((x.settled||j)?' is-done':'')+'"><label class="chk"><input type="checkbox" data-list="shared" data-f="settled" data-id="'+x.id+'"'+((x.settled||j)?' checked':'')+(j?' disabled':'')+' aria-label="Réglé"><span></span></label>'+
-      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag '+(j?'tw':'tb')+'">payé par '+esc(nsName(x.by))+'</span>'+(j?'<span class="tag">sans solde</span>':'<span class="tag">part '+fmt(r2(num(x.v)/2))+'</span>')+'</div></div>'+
+      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag '+(j?'tw':'tb')+'">payé par '+esc(nsName(x.by))+'</span>'+((x.from||x.bk)?'<span class="tag tb">Fortuneo</span>':'')+(j?'<span class="tag">sans solde</span>':'<span class="tag">part '+fmt(r2(num(x.v)/2))+'</span>')+'</div></div>'+
       '<input class="num" inputmode="decimal" data-list="shared" data-f="v" data-n="1" data-id="'+x.id+'" value="'+inp(x.v)+'" aria-label="Montant">'+
       '<button class="x" data-act="del" data-list="shared" data-id="'+x.id+'" aria-label="Supprimer">×</button></div>'}).join('');
   var today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
@@ -841,7 +852,7 @@ function vFix(m,c,xt){
       '<input type="hidden" name="group" value="Extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+vShared():(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
+      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+vXhg()+vShared():(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
@@ -856,7 +867,7 @@ function vDep(m,c){
   var ex=m.extras.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var copts=CATS.map(function(k){return '<option>'+esc(k)+'</option>'}).join('');
   var list=ex.map(function(e){
-    return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
+    return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+((e.tot||e.from||e.bk)?'<span class="tag tb">'+(e.tot?'réparti · Fortuneo '+fmt(e.tot):(e.from?'issu d’une opération Fortuneo':'relié Fortuneo '+fmt(e.bk)))+'</span>':'')+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
       '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
   var envT=function(label,sp,pl,attr,aria,hint,rem){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(rem?pl-sp:sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -980,13 +991,20 @@ function vPick(m){
     var fx=bsFixed(t,m);
     return '<div class="todo tap'+(bs.id===t.id?' on':'')+'" role="button" data-bs="open" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+'</b><small class="muted">'+esc(t.date||'')+(fx?' · charge cochée':'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'+(bs.id===t.id?bsSheet(t):'')}).join(''):'<div class="empty">Toutes les sorties du mois sont déjà comptées.</div>')+
     '<button class="btn" style="margin-top:10px" data-bs="pick">Fermer</button></section>'}
+var edErr='';
 function edSheet(e){
-  var f=!!e.bankId;
+  var f=!!e.bankId,sp='';
+  if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),so=(mm.shared||[]);
+    var opt=function(arr,g){return arr.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(g(y))+'</option>'}).join('')};
+    sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Choisis la cible et la somme à rattacher (vide = montant de la ligne choisie).</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option><option value="new">Extra : nouveau</option>'+opt(xo,function(y){return y.amount})+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
+    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<button class="btn" data-ed="split">Répartir</button></div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
     '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="ed-amount" inputmode="decimal" value="'+inp(e.amount)+'"'+(f?' disabled':'')+' aria-label="Montant" style="flex:1;min-width:0"><input type="date" id="ed-date" value="'+esc(e.date||'')+'"'+(f?' disabled':'')+' aria-label="Date" style="flex:1;min-width:0"></div>'+
-    (f?'<p class="small muted" style="margin:0 0 8px">Opération Fortuneo : montant et date non modifiables.</p>':'')+
+    (f?'<p class="small muted" style="margin:0 0 8px">Opération Fortuneo : montant et date non modifiables.</p>':'')+sp+
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-ed="save">Enregistrer</button><button class="btn" data-ed="close">Fermer</button></div></div>'}
 function bkChip(t){var c=bkClassify(t),o='';
   if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
@@ -1065,8 +1083,19 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-ed]');if(!t||e.target.closest('[data-act],[data-lk]'))return;var a=t.dataset.ed;
-  if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;render()}
+  if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;edErr='';render()}
   else if(a==='close'){ed.id=null;render()}
+  else if(a==='split'){var m0=editM(ym),x0=findBy(m0.extras,ed.id);if(!x0)return;var r2=function(v){return Math.round(v*100)/100};
+    var xs=$('#sp-xt').value,ss=$('#sp-sh').value,xa=xs?num($('#sp-xa').value):0,sa=ss?num($('#sp-sa').value):0;
+    if(xs&&xs!=='new'&&!xa){var q0=findBy(m0.extras,xs);xa=q0?Math.min(q0.amount,x0.amount):0}
+    if(ss&&ss!=='new'&&!sa){var q1=findBy(m0.shared,ss);sa=q1?Math.min(q1.v,x0.amount):0}
+    xa=r2(xa);sa=r2(sa);
+    if(xa+sa<0.005){edErr='Indique une cible et une somme.';render();return}
+    if(xa+sa>x0.amount+0.005){edErr='Somme trop élevée : il reste '+fmt(x0.amount)+' sur cette opération.';render();return}
+    if(!x0.tot)x0.tot=x0.amount;
+    if(xa){if(xs==='new')m0.extras.push({id:uid(),label:x0.label,cat:'Extra',amount:xa,date:x0.date,from:x0.bankId});else{var q2=findBy(m0.extras,xs);if(q2)q2.bk=r2((q2.bk||0)+xa)}}
+    if(sa){if(ss==='new')m0.shared.push({id:uid(),label:x0.label,v:sa,date:x0.date,by:'b',settled:false,from:x0.bankId});else{var q3=findBy(m0.shared,ss);if(q3)q3.bk=r2((q3.bk||0)+sa)}}
+    x0.amount=r2(x0.amount-xa-sa);edErr='';ed.id=null;commitM()}
   else if(a==='save'){var m=editM(ym),x=findBy(m.extras,ed.id);if(!x)return;
     var lb=String($('#ed-label').value||'').trim();if(lb)x.label=lb.slice(0,48);x.cat=$('#ed-cat').value||x.cat;
     if(!x.bankId){var am=num($('#ed-amount').value);if(am>0)x.amount=am;var dt=$('#ed-date').value;if(dt)x.date=dt}
