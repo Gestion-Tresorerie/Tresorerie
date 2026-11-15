@@ -1573,7 +1573,7 @@ function migModel(){
 function migCourses(){try{if(localStorage.getItem('budget-migc-v')==='1')return;Object.keys(state.months).forEach(function(k){var m=state.months[k],c=0;(m.extras||[]).forEach(function(e){if(e.bankId&&!e.grp&&(e.cat==='Autre'||!e.cat)){e.cat='Courses';c=1}});if(c)touch('m-'+k)});localStorage.setItem('budget-migc-v','1')}catch(e){}}
 /* ---------- Perso : compte Société Générale de Hasina (isolé du foyer, jamais dans la synchro commune) ---------- */
 var pe={sub:'apercu',key:null,doc:null,st:null,tx:null,bal:null,fetched:null,msg:'',busy:false,loaded:false};
-var PE_CATS=['Courses','Restaurants','Transport','Santé','Loisirs','Abonnements','Shopping','Épargne','Autre'],PE_SPEC=['Foyer','Fixe','Ignorer'];
+var PE_CATS=['Courses','Restaurants','Transport','Santé','Loisirs','Abonnements','Shopping','Épargne','Autre'],PE_SPEC=['Revenu','Foyer','Fixe','Ignorer'];
 try{pe.key=localStorage.getItem('budget-perso-key')||null}catch(e){}
 function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso-v1')||'null')}catch(e){}
   if(!d||typeof d.ts!=='number'||!d.data)d={ts:0,data:{}};pe.doc=peFix(d)}
@@ -1609,9 +1609,12 @@ function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;
 function peVisible(){return !!(bank.st&&bank.st.user==='hasina')}
 function pePaint(){var b=document.getElementById('persoBtn'),v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();if(b)b.hidden=!v;
   if(v&&pe.key&&!pe.loaded){pe.loaded=true;setTimeout(peLoad,0)}}
+function peIncDates(){if(pe._idk===pe.tx)return pe._idd;var o={};(pe.tx||[]).forEach(function(t){if(t.amount>0&&/STYX/i.test(String(t.label||'')))o[String(t.date||'').slice(0,10)]=1});pe._idk=pe.tx;pe._idd=o;return o}
+function peDayShift(d,k){var x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+k);return x.toISOString().slice(0,10)}
 function peGuess(t){var L=String(t.label||'').toUpperCase();
-  if(t.amount>0)return 'Ignorer';
+  if(t.amount>0)return /STYX/.test(L)?'Revenu':'Ignorer';
   if(/FORTUNEO|COMPTE JOINT|\bPAF\b/.test(L))return 'Foyer';
+  var dd=String(t.date||'').slice(0,10),I=peIncDates();if(/\bVIR|VIREMENT|PAF|FORTUNEO|JOINT/.test(L)&&(I[dd]||I[peDayShift(dd,-1)]))return 'Foyer';
   if(/LIDL|CARREFOUR|LECLERC|AUCHAN|INTERMARCHE|MONOPRIX|CASINO|FRANPRIX|ALDI|BIOCOOP/.test(L))return 'Courses';
   if(/RESTAU|MCDO|MCDONALD|BURGER|UBER EATS|DELIVEROO|BOULANG|KFC|PIZZ|CAFE/.test(L))return 'Restaurants';
   if(/SNCF|TOTAL|ESSO|PEAGE|PARKING|NAVIGO|BLABLA|STATION|AUTOROUTE/.test(L))return 'Transport';
@@ -1620,7 +1623,8 @@ function peGuess(t){var L=String(t.label||'').toUpperCase();
   if(/AMAZON|FNAC|ZARA|DECATHLON|CDISCOUNT|ALIEXPRESS/.test(L))return 'Shopping';
   return 'Autre'}
 function peCat(t){var o=pe.doc.data.tx[t.id];return (o&&o.cat)||peGuess(t)}
-function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&String(t.date||'').slice(0,7)===ym})}
+function peMk(t){var d=String(t.date||''),b=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(b))return b;var c=peCat(t);return (+d.slice(8,10)>=29&&(c==='Revenu'||c==='Foyer'))?shiftYm(b,1):b}
+function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===ym})}
 function peFoyerDue(){var m=getV(ym);return Math.round(sum((m.credits||[]).filter(function(c){return c.who==='Hasina'&&/paf/.test(String(c.kind||''))}),function(c){return num(c.done&&c.actual!=null?c.actual:c.planned)})*100)/100}
 function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
   return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
@@ -1632,7 +1636,8 @@ function vPerso(){
   if(!pe.key)return h+'<section class="card"><h2>Perso</h2><p class="small muted" style="margin:0 0 10px">Espace privé : entre ton mot de passe perso. Il n’est conservé que sur cet appareil.</p>'+
     '<form class="form" data-peform="unlock"><input type="password" name="password" placeholder="Mot de passe perso" required autocomplete="current-password" aria-label="Mot de passe perso" class="full"><button class="btn primary full" type="submit"'+(pe.busy?' disabled':'')+'>Déverrouiller</button></form></section>';
   var D=pe.doc.data,st=pe.st,T=peMonth(),sub=pe.sub||'apercu';pe.sub=sub;
-  var inc=Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
+  var rcv=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),rcvS=Math.round(sum(rcv,function(t){return t.amount})*100)/100,
+    inc=rcv.length?rcvS:Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
     deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0;
   deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c!=='Fixe'&&c!=='Ignorer')vr+=a;if(!pe.doc.data.tx[t.id])todo++});
   foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;var reste=Math.round((inc-fix-foy-vr)*100)/100;
@@ -1643,8 +1648,8 @@ function vPerso(){
   if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
   h+=peSegs();
   if(sub==='apercu'){
-    h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses</div>'+
-      [['Revenus',inc],['Charges fixes',-fix],['Virement foyer',-foy],['Dépenses variables',-vr]].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
+    h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses · les virements reçus ou envoyés à partir du 29 comptent pour le mois suivant</div>'+
+      [[rcv.length?'Revenus reçus':'Revenus attendus',inc],['Charges fixes',-fix],['Virement foyer',-foy],['Dépenses variables',-vr]].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
     if(todo)h+='<div class="note">'+todo+' opération'+(todo>1?'s':'')+' non classée'+(todo>1?'s':'')+' manuellement (catégorie devinée) · <button class="btn mini lnk" data-pe="sub" data-v="ops">Classer</button></div>';
     var mx=0;PE_CATS.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
     h+='<section class="card"><h2>Dépenses par catégorie</h2>'+PE_CATS.filter(function(c){return (by[c]||0)>0||num(D.env[c])>0}).map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
