@@ -318,6 +318,15 @@ body{padding-bottom:28px}
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:15}
 .menu-open #scrim{opacity:1;pointer-events:auto}
 .brow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.brow>.btn{width:100%;margin:0;padding-left:6px;padding-right:6px;text-align:center;line-height:1.25}.brow>.btn:last-child:nth-child(odd){grid-column:1/-1}
+/* hiérarchie titres / détails */
+.card h2{display:block;font-size:15px;font-weight:700;letter-spacing:.07em;color:var(--ink);margin:0 0 14px;padding:0 0 10px;border-bottom:2px solid var(--line)}
+.card h2::before{content:"";display:inline-block;width:4px;height:15px;border-radius:2px;background:var(--accent);margin-right:9px;vertical-align:-2px}
+.card h2 .x{float:right}
+.card .grp{margin:16px 0 6px;padding:5px 9px;border-left:3px solid var(--accent);background:var(--line);border-radius:0 8px 8px 0}
+.card .grp b{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink)}
+.card>.grp:first-child{margin-top:0}
+.line .nm,.row .nm,.mrow .nm{font-weight:500}
+.line .small,.line .tags{opacity:.85}
 </style>
 </head>
 <body>
