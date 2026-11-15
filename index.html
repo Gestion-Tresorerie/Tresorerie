@@ -743,6 +743,7 @@ function vHist(){
 var lk={on:false,tx:null,sel:{}};
 function lkLines(m){return (m.extras||[]).filter(function(e){return !e.bankId&&!e.grp})}
 function lkXt(m){return (m.fixed||[]).filter(function(x){return isX(x)&&!x.paid&&!x.grp&&!(m.carry&&m.carry[x.id])})}
+function lkUnc(m){return (bank.tx||[]).filter(function(t){return t.id&&!t.pending&&t.amount<0&&bkMonthKey(t)===ym&&!bsExtra(t)&&!bsGrp(t).length})}
 function lkA(x){return x.amount!=null?x.amount:x.planned}
 function lkTx(m){return (m.extras||[]).filter(function(e){return e.bankId}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))})}
 function lkPick(m,amt){
@@ -752,15 +753,17 @@ function lkPick(m,amt){
   return null}
 function vLink(m){
   if(col||!bank.token)return '';
-  var L=lkLines(m),X=lkXt(m),T=lkTx(m);
-  if((!L.length&&!X.length)||!T.length)return '';
+  var L=lkLines(m),X=lkXt(m),T=lkTx(m),U=lkUnc(m);
   if(!lk.on)return '';
   var tx=T.filter(function(e){return e.id===lk.tx})[0];
   var h='<section class="card"><h2>1 · Choisir le débit</h2>'+T.map(function(e){
-    return '<div class="todo tap'+(tx&&tx.id===e.id?' on':'')+'" role="button" data-lk="tx" data-id="'+e.id+'"><span><b>'+esc(e.label)+'</b><small class="muted">'+esc(e.date||'')+'</small></span><span class="n neg">'+fmt(e.amount)+'</span></div>'}).join('')+'</section>';
+    return '<div class="todo tap'+(tx&&tx.id===e.id?' on':'')+'" role="button" data-lk="tx" data-id="'+e.id+'"><span><b>'+esc(e.label)+'</b><small class="muted">'+esc(e.date||'')+'</small></span><span class="n neg">'+fmt(e.amount)+'</span></div>'}).join('')+
+    (U.length?'<div class="grp" style="margin-top:14px"><b>Non comptés</b></div><p class="small muted" style="margin:0 0 6px">Touche une opération pour la compter comme dépense, puis la relier.</p>'+U.map(function(t){var f=bsFixed(t,m);
+      return '<div class="todo tap" role="button" data-lk="unc" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+'</b><small class="muted">'+esc(t.date||'')+(f?' · décochera « '+esc(f.label)+' »':'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
+    (!T.length&&!U.length?'<div class="empty">Aucun débit Fortuneo à relier ce mois-ci.</div>':'')+'</section>';
   if(tx){
     var ids=Object.keys(lk.sel).filter(function(k){return lk.sel[k]}),tot=sum(L.concat(X).filter(function(x){return lk.sel[x.id]}),lkA),gap=Math.round((tx.amount-tot)*100)/100;
-    h+='<section class="card"><h2>2 · Cocher les achats</h2>'+L.map(function(x){
+    h+='<section class="card"><h2>2 · Cocher les achats</h2>'+(!L.length&&!X.length?'<div class="empty">Aucun achat saisi ni extra prévu à relier : ajoute-les d’abord.</div>':'')+L.map(function(x){
       return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">'+esc(x.date||'')+'</small></span><span class="n">'+fmt(x.amount)+'</span></div>'}).join('')+
       (X.length?'<div class="grp" style="margin-top:14px"><b>Extras prévus</b></div>'+X.map(function(x){
         return '<div class="todo tap" role="button" data-lk="tog" data-id="'+x.id+'"><span><b>'+(lk.sel[x.id]?'☑':'☐')+' '+esc(x.label)+'</b><small class="muted">extra · prévu</small></span><span class="n">'+fmt(x.planned)+'</span></div>'}).join(''):'')+
@@ -995,7 +998,7 @@ var edErr='';
 function edSheet(e){
   var f=!!e.bankId,sp='';
   if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),xf=mm.fixed.filter(function(y){return y.group==='Extra'&&!y.paid}),so=(mm.shared||[]),fl=mm.fixed.filter(function(y){return y.group!=='Extra'&&!y.paid&&!y.grp});
-    var cl=!col&&bank.token&&(lkLines(mm).length||lkXt(mm).length);
+    var cl=!col&&bank.token;
     var opt=function(arr,g){return arr.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(g(y))+'</option>'}).join('')};
     sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Rattache à un extra, une dépense 50/50 ou une charge fixe existants (crée-les d’abord) et saisis la somme (vide = montant de la ligne choisie).</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
@@ -1132,6 +1135,11 @@ document.addEventListener('click',function(e){
     if(sg){lk.tx=sg.id;lkPick(m,sg.amount).forEach(function(id){lk.sel[id]=1})}
     state.tab='depenses';render();window.scrollTo(0,0)}
   else if(a==='from'){lk={on:true,tx:t.dataset.id,sel:{}};var fx0=lkTx(m).filter(function(y){return y.id===lk.tx})[0],fp=fx0&&lkPick(m,fx0.amount);(fp||[]).forEach(function(id){lk.sel[id]=1});ed.id=null;state.tab='depenses';render();window.scrollTo(0,0)}
+  else if(a==='unc'){var ut=(bank.tx||[]).filter(function(y){return y.id===t.dataset.id})[0];if(!ut)return;
+    var um=editM(ym),ufx=bsFixed(ut,um);um.bankSeen=um.bankSeen||{};um.bankSeen[ut.id]=1;
+    if(ufx){ufx.paid=false;ufx.bank=false;ufx.actual=ufx.planned;delete ufx.bankId;delete ufx.btx}
+    var uex={id:uid(),label:String(bkTitle(ut)).slice(0,48),cat:'Courses',amount:Math.abs(ut.amount),date:ut.date,bankId:ut.id};um.extras.push(uex);
+    lk.tx=uex.id;lk.sel={};commitM();var um2=getV(ym),up=lkPick(um2,uex.amount);(up||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tx'){lk.tx=t.dataset.id;lk.sel={};var x=lkTx(m).filter(function(y){return y.id===lk.tx})[0],p=x&&lkPick(m,x.amount);(p||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tog'){lk.sel[t.dataset.id]=!lk.sel[t.dataset.id];render()}
   else if(a==='cancel'){lk={on:false,tx:null,sel:{}};render()}
