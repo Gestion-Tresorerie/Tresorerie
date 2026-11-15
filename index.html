@@ -1651,7 +1651,15 @@ function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk
 function peFoy(){var m0=state.months[ym],mm=getV(ym),c=calc(mm),S=c.S,i=state.config.contributors.indexOf('Hasina');i=i<=0?0:1;
   var has=!!m0&&(((m0.credits||[]).length)||((m0.fixed||[]).length)),r=function(v){return Math.round(v*100)/100},
     got=sum((mm.credits||[]).filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who==='Hasina'&&x.done}),function(x){return act(x,S)});
-  return {has:has,due:r(S.share[i]),got:r(got),first:r(S.firstUsed),second:r(S.second),known:S.known}}
+  var oth=(mm.credits||[]).filter(function(x){return x.who==='Hasina'&&x.kind!=='paf'&&x.kind!=='paf1'&&x.kind!=='paf2'&&!/\bpaf\b/i.test(x.label||'')}).map(function(x){return {label:x.label||'',amt:r(act(x,S)),done:!!x.done}}),
+    oT=r(sum(oth,function(x){return x.amt})),oD=r(sum(oth.filter(function(x){return x.done}),function(x){return x.amt}));
+  return {has:has,due:r(S.share[i]),got:r(got),first:r(S.firstUsed),second:r(S.second),known:S.known,oth:oth,othTot:oT,othDone:oD}}
+function peOthCard(FY,sent){if(!FY.oth.length)return '';var gap=Math.round((FY.othDone-sent)*100)/100;
+  return '<section class="card"><h2>Remboursements &amp; paiements · Hasina</h2><div class="small muted" style="margin:-4px 0 8px">Assignés à Hasina dans le suivi Fortuneo (hors PAF)</div>'+
+    FY.oth.map(function(x){return '<div class="line"><span class="t"><span class="nm">'+esc(x.label)+'</span><span class="tags"><span class="tag">'+(x.done?'reçu':'en attente')+'</span></span></span><span class="n '+(x.done?'pos':'')+'">'+fmt(x.amt)+'</span></div>'}).join('')+
+    '<div class="line"><span><b>Total reçu côté Fortuneo</b></span><span class="n"><b>'+fmt(FY.othDone)+'</b></span></div>'+
+    '<div class="line"><span>Virements foyer SG (charges + extras)</span><span class="n">'+fmt(sent)+'</span></div>'+
+    '<div class="line"><span>Écart SG − Fortuneo</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(-gap))+'</span></div></section>'}
 function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
   return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
 function peAgg(m){var D=pe.doc.data,T=(pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===m}),rc=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),
@@ -1688,6 +1696,7 @@ function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return 
   var base=Math.max(c.inc,used,1),seg=[['Fixes',c.fix,'var(--accent)'],['Foyer',c.foy,'#8b7bd8'],['Dépenses',c.vr,'#e0a030'],['Reste',Math.max(0,c.reste),'var(--good)']];
   h+='<section class="card"><h2>Répartition du mois</h2><div class="pd-stack">'+seg.map(function(x){return x[1]>0?'<i style="width:'+(x[1]/base*100).toFixed(2)+'%;background:'+x[2]+'" title="'+x[0]+'"></i>':''}).join('')+(used>c.inc&&c.inc>0?'':'')+'</div>'+
     '<div class="pd-leg">'+seg.map(function(x){return '<span><i style="background:'+x[2]+'"></i>'+x[0]+' <b>'+fe(x[1])+'</b></span>'}).join('')+'</div></section>';
+  h+=peOthCard(c.FY,c.foyCE);
   /* catégories */
   var ALLC=PE_CATS.concat(['Fixe','Foyer','Foyer·Charge','Foyer·Extra']),rows=ALLC.filter(function(k){return (c.by[k]||0)>0||num(c.D.env[k])>0}).map(function(k){return [k,Math.round((c.by[k]||0)*100)/100,num(c.D.env[k])]}).sort(function(a,b){return b[1]-a[1]}),mx=0;rows.forEach(function(r){mx=Math.max(mx,r[1],r[2])});
   h+='<section class="card"><h2>Catégories vs enveloppes</h2>'+(rows.length?rows.map(function(r){var o=r[2]>0&&r[1]>r[2],pc=r[2]>0?Math.round(r[1]/r[2]*100):null;
@@ -1723,7 +1732,7 @@ function vPerso(){
   h+=peSegs();
   var PP=pePeriod(ym);
   if(sub==='apercu'){
-    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D});
+    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
   }else if(sub==='ops'){
     var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
     h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
@@ -1746,7 +1755,7 @@ function vPerso(){
     h+=(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
       '<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('Attendue (onglet PAF du foyer)',fmt(due))+'<div class="small muted" style="margin:-2px 0 6px">1er du mois '+fmt(FY.first)+' · le 10 '+fmt(FY.second)+(FY.known?'':' · revenus non renseignés (50/50)')+'</div>'+R('Virée depuis la SG',fmt(pafS))+
       R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+'</section>'+
-      '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+
+      '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+peOthCard(FY,Math.round((foyC+foyE)*100)/100)+
       '<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
   }else{
     h+='<section class="card"><h2>Connexion Société Générale</h2>';
