@@ -1630,7 +1630,11 @@ function peGuess(t){var L=String(t.label||'').toUpperCase();
   return 'Autre'}
 function peKey(l){var w=String(l||'').toUpperCase().replace(/REF\s*:.*$/,'').replace(/[0-9]+[A-Z]?/g,' ').replace(/[^A-ZÀ-Ý ]/g,' ').split(/\s+/).filter(function(x){return x.length>2&&!/^(VIR|RECU|EMIS|CB|PRLV|DE|LE|DU|PAR|EUR|CARTE|PAIEMENT)$/.test(x)});return w.slice(0,3).join(' ')}
 function peCat(t){var D=pe.doc.data,o=D.tx[t.id];if(o&&o.cat)return o.cat;var k=peKey(t.label),r=k&&D.rules&&D.rules[k];if(r&&((r==='Revenu')===(t.amount>0)||t.amount<0))return r;return peGuess(t)}
-function peMk(t){var d=String(t.date||''),b=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(b))return b;var c=peCat(t);return (+d.slice(8,10)>=25&&(c==='Revenu'||peIsF(c)))?shiftYm(b,1):b}
+function peStarts(){if(pe._sk===pe.tx&&pe._sv===pe.doc.ts)return pe._ss;var S={};
+  (pe.tx||[]).forEach(function(t){if(!(t.amount>0)||t.pending||peCat(t)!=='Revenu')return;var d=String(t.date||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||+d.slice(8,10)<25)return;var m=shiftYm(d.slice(0,7),1);if(!S[m]||d<S[m])S[m]=d});
+  pe._sk=pe.tx;pe._sv=pe.doc.ts;pe._ss=S;return S}
+function peMk(t){var d=String(t.date||'').slice(0,10),b=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(b))return b;var n=shiftYm(b,1),S=peStarts();return (S[n]&&d>=S[n])?n:b}
+function pePeriod(m){var S=peStarts(),a=S[m]||(m+'-01'),nx=S[shiftYm(m,1)];return {from:a,to:nx?peDayShift(nx,-1):null,auto:!!S[m]}}
 function peBackfill(){var D=pe.doc.data,cnt={},ch=false;
   (pe.tx||[]).forEach(function(t){var o=D.tx[t.id];if(!o||!o.cat)return;var k=peKey(t.label);if(!k)return;(cnt[k]=cnt[k]||{})[o.cat]=(cnt[k][o.cat]||0)+1});
   Object.keys(cnt).forEach(function(k){if(D.rules[k])return;var b=null,m=0;Object.keys(cnt[k]).forEach(function(c){if(cnt[k][c]>m){m=cnt[k][c];b=c}});if(b){D.rules[k]=b;ch=true}});
@@ -1663,8 +1667,9 @@ function vPerso(){
   if(pe.histFb)h+='<div class="note warn">La banque refuse l’historique demandé : opérations limitées à 90 jours (depuis le '+esc(pe.hist||'')+').</div>';
   if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
   h+=peSegs();
+  var PP=pePeriod(ym);
   if(sub==='apercu'){
-    h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses · les virements reçus ou envoyés à partir du 29 comptent pour le mois suivant</div>'+
+    h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses</div><div class="small muted" style="margin:0 0 10px">Période : du '+esc(PP.from.split('-').reverse().join('/'))+(PP.auto?' (1er salaire)':'')+' au '+(PP.to?esc(PP.to.split('-').reverse().join('/')):'prochain salaire')+'</div>'+
       [[rcv.length?'Revenus reçus':'Revenus attendus',inc],['Charges fixes',-fix],['Virement foyer',-foy],['Dépenses variables',-vr]].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
     if(todo)h+='<div class="note">'+todo+' opération'+(todo>1?'s':'')+' non classée'+(todo>1?'s':'')+' manuellement (catégorie devinée) · <button class="btn mini lnk" data-pe="sub" data-v="ops">Classer</button></div>';
     var ALLC=PE_CATS.concat(['Fixe','Foyer','Foyer·Charge','Foyer·Extra']),mx=0;ALLC.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
