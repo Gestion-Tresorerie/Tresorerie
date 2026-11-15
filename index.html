@@ -1637,7 +1637,10 @@ function peBackfill(){var D=pe.doc.data,cnt={},ch=false;
   if(ch){pe.doc.ts=Date.now();peStore();if(pe.key)peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){})}}
 function peRuled(t){var k=peKey(t.label);return !!(k&&pe.doc.data.rules&&pe.doc.data.rules[k])}
 function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===ym})}
-function peFoyerDue(){var c=calc(getV(ym)),i=state.config.contributors.indexOf('Hasina');return c&&c.S?Math.round(c.S.share[i<=0?0:1]*100)/100:0}
+function peFoy(){var m0=state.months[ym],mm=getV(ym),c=calc(mm),S=c.S,i=state.config.contributors.indexOf('Hasina');i=i<=0?0:1;
+  var has=!!m0&&(((m0.credits||[]).length)||((m0.fixed||[]).length)),r=function(v){return Math.round(v*100)/100},
+    got=sum((mm.credits||[]).filter(function(x){return (x.kind||/paf|solde|particip/i.test(x.label||''))&&x.who==='Hasina'&&x.done}),function(x){return act(x,S)});
+  return {has:has,due:r(S.share[i]),got:r(got),first:r(S.firstUsed),second:r(S.second),known:S.known}}
 function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
   return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
 function vPerso(){
@@ -1683,9 +1686,12 @@ function vPerso(){
       adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
       adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
   }else if(sub==='foyer'){
-    var due=peFoyerDue(),pafS=Math.round(foyP*100)/100,gap=Math.round((due-pafS)*100)/100,fl=deb.filter(function(t){return peIsF(peCat(t))}),
-      R=function(l,v,cls){return '<div class="line"><span>'+l+'</span><span class="n '+(cls||'')+'">'+v+'</span></div>'};
-    h+='<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('PAF attendue (Hasina)',fmt(due))+R('PAF virée depuis la SG',fmt(pafS))+R('Écart',(Math.abs(gap)<0.015?'0,00 €':sgn(gap)),Math.abs(gap)<0.015?'pos':'neg')+'</section>'+
+    var FY=peFoy(),due=FY.due,pafS=Math.round(foyP*100)/100,gap=Math.round((due-pafS)*100)/100,gap2=Math.round((FY.got-pafS)*100)/100,fl=deb.filter(function(t){return peIsF(peCat(t))}),
+      R=function(l,v,cls){return '<div class="line"><span>'+l+'</span><span class="n '+(cls||'')+'">'+v+'</span></div>'},
+      G=function(g){return Math.abs(g)<0.015?'0,00 €':sgn(g)};
+    h+=(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
+      '<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('Attendue (onglet PAF du foyer)',fmt(due))+'<div class="small muted" style="margin:-2px 0 6px">1er du mois '+fmt(FY.first)+' · le 10 '+fmt(FY.second)+(FY.known?'':' · revenus non renseignés (50/50)')+'</div>'+R('Reçue sur le joint (cochée côté foyer)',fmt(FY.got))+R('Virée depuis la SG',fmt(pafS))+
+      R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+R('Écart SG − reçue',G(-gap2),Math.abs(gap2)<0.015?'pos':'neg')+'</section>'+
       '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+
       '<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
   }else{
