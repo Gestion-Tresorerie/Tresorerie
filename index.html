@@ -330,6 +330,7 @@ body{padding-bottom:28px}
 #persoBtn[hidden]{display:none!important}
 .pseg{display:flex;gap:4px;margin:0 0 12px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-x:auto}.pseg button{flex:1;white-space:nowrap;font:inherit;font-size:13px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}.pseg button[aria-selected=true]{background:var(--accent);color:#fff;font-weight:600}
 .phead{display:flex;align-items:center;justify-content:space-between;gap:12px}.phead .btn{flex:0 0 auto}
+.pdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f5c518;margin-right:7px;vertical-align:middle}
 .pop{padding:10px 0;border-bottom:1px solid var(--line)}.pop:last-child{border-bottom:0}.pop1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.pop1 .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis}.pop2{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}.pop2 select{flex:0 0 52%;min-width:0}
 
 </style>
@@ -1677,10 +1678,11 @@ function vPerso(){
       return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(c)+'</span><span class="n '+(b&&sp>b?'neg':'')+'">'+fmt(sp)+(b?' / '+fmt(b):'')+'</span></div>'+bar(sp,Math.max(b,mx||1))+'</div>'}).join('')||'<div class="empty">Aucune dépense ce mois-ci.</div>';
     h+='</section>';
   }else if(sub==='ops'){
-    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id];
-      return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
+    var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
+    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
+      return '<div class="pop"><div class="pop1"><span class="nm">'+(pend?'<i class="pdot" title="À valider"></i>':'')+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
         '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
-        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
+        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
   }else if(sub==='budget'){
     var fxl=deb.filter(function(t){var c=peCat(t);return c==='Fixe'||c==='Abonnements'||peIsF(c)}).sort(function(x,y){return peCat(x).localeCompare(peCat(y))});
     h+='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
@@ -1710,6 +1712,8 @@ function vPerso(){
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-pe]');if(!t)return;var a=t.dataset.pe,D=pe.doc.data;
   if(a==='sub'){pe.sub=t.dataset.v;render();window.scrollTo(0,0);return}
+  if(a==='ok'||a==='okall'){var ids=a==='ok'?[t.dataset.id]:peMonth().filter(function(x){return !D.tx[x.id]&&!peRuled(x)}).map(function(x){return x.id});
+    ids.forEach(function(id){var x=(pe.tx||[]).filter(function(y){return y.id===id})[0];if(!x)return;var c=peCat(x);D.tx[id]={cat:c};var k=peKey(x.label);if(k&&!D.rules[k])D.rules[k]=c});peSave();return}
   if(a==='connect'){pe.busy=true;render();peCall('/perso/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url)window.location.href=x.d.url;else{pe.busy=false;pe.msg='Connexion impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(peFail)}
   else if(a==='refresh')peTx(true);
   else if(a==='lock'){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.loaded=false;try{localStorage.removeItem('budget-perso-key')}catch(x){}render()}
