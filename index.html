@@ -328,6 +328,10 @@ body{padding-bottom:28px}
 .line .nm,.row .nm,.mrow .nm{font-weight:500}
 .line .small,.line .tags{opacity:.85}
 #persoBtn[hidden]{display:none!important}
+.pseg{display:flex;gap:4px;margin:0 0 12px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-x:auto}.pseg button{flex:1;white-space:nowrap;font:inherit;font-size:13px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}.pseg button[aria-selected=true]{background:var(--accent);color:#fff;font-weight:600}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:12px}.phead .btn{flex:0 0 auto}
+.pop{padding:10px 0;border-bottom:1px solid var(--line)}.pop:last-child{border-bottom:0}.pop1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.pop1 .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis}.pop2{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}.pop2 select{flex:0 0 52%;min-width:0}
+
 </style>
 </head>
 <body>
@@ -1568,7 +1572,7 @@ function migModel(){
 }
 function migCourses(){try{if(localStorage.getItem('budget-migc-v')==='1')return;Object.keys(state.months).forEach(function(k){var m=state.months[k],c=0;(m.extras||[]).forEach(function(e){if(e.bankId&&!e.grp&&(e.cat==='Autre'||!e.cat)){e.cat='Courses';c=1}});if(c)touch('m-'+k)});localStorage.setItem('budget-migc-v','1')}catch(e){}}
 /* ---------- Perso : compte Société Générale de Hasina (isolé du foyer, jamais dans la synchro commune) ---------- */
-var pe={key:null,doc:null,st:null,tx:null,bal:null,fetched:null,msg:'',busy:false,loaded:false};
+var pe={sub:'apercu',key:null,doc:null,st:null,tx:null,bal:null,fetched:null,msg:'',busy:false,loaded:false};
 var PE_CATS=['Courses','Restaurants','Transport','Santé','Loisirs','Abonnements','Shopping','Épargne','Autre'],PE_SPEC=['Foyer','Fixe','Ignorer'];
 try{pe.key=localStorage.getItem('budget-perso-key')||null}catch(e){}
 function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso-v1')||'null')}catch(e){}
@@ -1618,6 +1622,8 @@ function peGuess(t){var L=String(t.label||'').toUpperCase();
 function peCat(t){var o=pe.doc.data.tx[t.id];return (o&&o.cat)||peGuess(t)}
 function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&String(t.date||'').slice(0,7)===ym})}
 function peFoyerDue(){var m=getV(ym);return Math.round(sum((m.credits||[]).filter(function(c){return c.who==='Hasina'&&/paf/.test(String(c.kind||''))}),function(c){return num(c.done&&c.actual!=null?c.actual:c.planned)})*100)/100}
+function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
+  return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
 function vPerso(){
   var h='';
   if(bank.token&&!bank.st)return '<section class="card"><h2>Perso</h2><div class="small muted">Chargement…</div></section>';
@@ -1625,38 +1631,51 @@ function vPerso(){
   if(pe.msg)h+='<div class="note warn">'+esc(pe.msg)+'</div>';
   if(!pe.key)return h+'<section class="card"><h2>Perso</h2><p class="small muted" style="margin:0 0 10px">Espace privé : entre ton mot de passe perso. Il n’est conservé que sur cet appareil.</p>'+
     '<form class="form" data-peform="unlock"><input type="password" name="password" placeholder="Mot de passe perso" required autocomplete="current-password" aria-label="Mot de passe perso" class="full"><button class="btn primary full" type="submit"'+(pe.busy?' disabled':'')+'>Déverrouiller</button></form></section>';
-  var D=pe.doc.data,st=pe.st,T=peMonth(),i;
-  h+='<section class="card"><h2>Société Générale</h2>';
-  if(!st)h+='<div class="small muted">Chargement…</div>';
-  else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
-  else{var vu=st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null;
-    h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(st.expired||(days!=null&&days<=10)?'neg':'pos')+'">'+(st.expired?'Consentement expiré':(vu?'valide jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div>'+
-    (pe.bal?'<div class="big" style="font-size:26px;margin:6px 0">'+fmt(pe.bal.amount)+'</div><div class="small muted">Solde SG'+(pe.fetched?' · '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'')+'</div>':'')+
-    '<div class="brow">'+(st.expired||(days!=null&&days<=10)?'<button class="btn primary" data-pe="connect">Renouveler</button>':'')+'<button class="btn" data-pe="refresh"'+(pe.busy||st.expired?' disabled':'')+'>Actualiser</button></div>'}
-  h+='<div class="brow"><button class="btn mini lnk" data-pe="lock">Verrouiller cet appareil</button></div></section>';
+  var D=pe.doc.data,st=pe.st,T=peMonth(),sub=pe.sub||'apercu';pe.sub=sub;
   var inc=Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
-    deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0;
-  deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c!=='Fixe'&&c!=='Ignorer')vr+=a});
+    deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0;
+  deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c!=='Fixe'&&c!=='Ignorer')vr+=a;if(!pe.doc.data.tx[t.id])todo++});
   foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;var reste=Math.round((inc-fix-foy-vr)*100)/100;
-  h+='<section class="card"><h2>Mon budget · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:28px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Reste à vivre = revenus − charges fixes − versement foyer − dépenses</div>'+
-    [['Revenus',inc,''],['Charges fixes perso',-fix,''],['Versement au foyer',-foy,''],['Dépenses variables',-vr,'']].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
-  var due=peFoyerDue(),gap=Math.round((due-foy)*100)/100,fl=deb.filter(function(t){return peCat(t)==='Foyer'});
-  h+='<section class="card"><h2>Lien avec le foyer</h2><div class="line"><span>PAF attendue (Hasina)</span><span class="n">'+fmt(due)+'</span></div><div class="line"><span>Virée depuis la SG</span><span class="n">'+fmt(foy)+'</span></div><div class="line"><span>Écart</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(gap))+'</span></div>'+
-    (fl.length?'<div class="grp"><b>Virements au foyer</b></div>'+fl.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucun virement classé « Foyer » ce mois-ci.</div>')+'</section>';
-  var mx=0;PE_CATS.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
-  h+='<section class="card"><h2>Enveloppes</h2>'+PE_CATS.map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
-    return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(c)+'</span><span class="n '+(b&&sp>b?'neg':'')+'">'+fmt(sp)+(b?' / '+fmt(b):'')+'</span></div>'+bar(sp,Math.max(b,mx||1))+'</div>'}).join('')+'</section>'+
-    adOpen('peenv','Modifier les enveloppes')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
-  h+='<section class="card"><h2>Revenus & charges fixes perso</h2><div class="grp"><b>Revenus</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu.</div>')+
-    '<div class="grp"><b>Charges fixes</b></div>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge fixe.</div>')+'</section>'+
-    adOpen('peinc','Ajouter un revenu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
-    adOpen('pefix','Ajouter une charge fixe')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
-  h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(T.length?T.map(function(t){var c=peCat(t);
-    return '<div class="line" style="flex-wrap:wrap"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span>'+
-      '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie" style="flex-basis:100%">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée : connecte la Société Générale.')+'</div>')+'</section>';
+  var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
+  h+='<section class="card phead"><div><div class="small muted">Solde Société Générale</div><div class="big" style="font-size:28px">'+(pe.bal?fmt(pe.bal.amount):'—')+'</div>'+
+    (pe.fetched?'<div class="small muted">MàJ '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'')+'</div>'+
+    '<button class="btn" data-pe="refresh"'+(pe.busy||!st||!st.linked||st.expired?' disabled':'')+'>'+(pe.busy?'…':'Actualiser')+'</button></section>';
+  if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
+  h+=peSegs();
+  if(sub==='apercu'){
+    h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses</div>'+
+      [['Revenus',inc],['Charges fixes',-fix],['Virement foyer',-foy],['Dépenses variables',-vr]].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
+    if(todo)h+='<div class="note">'+todo+' opération'+(todo>1?'s':'')+' non classée'+(todo>1?'s':'')+' manuellement (catégorie devinée) · <button class="btn mini lnk" data-pe="sub" data-v="ops">Classer</button></div>';
+    var mx=0;PE_CATS.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
+    h+='<section class="card"><h2>Dépenses par catégorie</h2>'+PE_CATS.filter(function(c){return (by[c]||0)>0||num(D.env[c])>0}).map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
+      return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(c)+'</span><span class="n '+(b&&sp>b?'neg':'')+'">'+fmt(sp)+(b?' / '+fmt(b):'')+'</span></div>'+bar(sp,Math.max(b,mx||1))+'</div>'}).join('')||'<div class="empty">Aucune dépense ce mois-ci.</div>';
+    h+='</section>';
+  }else if(sub==='ops'){
+    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id];
+      return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
+        '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
+        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
+  }else if(sub==='budget'){
+    h+='<section class="card"><h2>Revenus</h2>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu.</div>')+'</section>'+
+      adOpen('peinc','Ajouter un revenu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+      '<section class="card"><h2>Charges fixes</h2>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge fixe.</div>')+'</section>'+
+      adOpen('pefix','Ajouter une charge fixe')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+      adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
+  }else if(sub==='foyer'){
+    var due=peFoyerDue(),gap=Math.round((due-foy)*100)/100,fl=deb.filter(function(t){return peCat(t)==='Foyer'});
+    h+='<section class="card"><h2>Lien avec le foyer · '+esc(ymLabel(ym))+'</h2><div class="line"><span>PAF attendue (Hasina)</span><span class="n">'+fmt(due)+'</span></div><div class="line"><span>Virée depuis la SG</span><span class="n">'+fmt(foy)+'</span></div><div class="line"><span>Écart</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(gap))+'</span></div>'+
+      (fl.length?'<div class="grp"><b>Virements au foyer</b></div>'+fl.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucun virement classé « Foyer » ce mois-ci.</div>')+'</section>';
+  }else{
+    h+='<section class="card"><h2>Connexion Société Générale</h2>';
+    if(!st)h+='<div class="small muted">Chargement…</div>';
+    else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
+    else h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(warn?'neg':'pos')+'">'+(st.expired?'Consentement expiré':(vu?'jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div><div class="brow"><button class="btn'+(warn?' primary':'')+'" data-pe="connect">Renouveler le consentement</button></div>';
+    h+='</section><section class="card"><h2>Cet appareil</h2><p class="small muted" style="margin:0 0 10px">Efface le mot de passe perso mémorisé ici. Les données restent sur le serveur.</p><div class="brow"><button class="btn" data-pe="lock">Verrouiller cet appareil</button></div></section>';
+  }
   return h}
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-pe]');if(!t)return;var a=t.dataset.pe,D=pe.doc.data;
+  if(a==='sub'){pe.sub=t.dataset.v;render();window.scrollTo(0,0);return}
   if(a==='connect'){pe.busy=true;render();peCall('/perso/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url)window.location.href=x.d.url;else{pe.busy=false;pe.msg='Connexion impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(peFail)}
   else if(a==='refresh')peTx(true);
   else if(a==='lock'){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.loaded=false;try{localStorage.removeItem('budget-perso-key')}catch(x){}render()}
