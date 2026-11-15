@@ -383,7 +383,7 @@ function normCfg(d){
 function normMonth(d,key){
   var m=clone(d||{});
   m.ym=key; m.courses=m.courses||{planned:state.config.courses};
-  m.credits=m.credits||[]; m.fixed=m.fixed||[]; m.extras=m.extras||[];
+  m.credits=m.credits||[]; m.fixed=m.fixed||[]; m.extras=m.extras||[]; m.shared=m.shared||[];
   return m;
 }
 function build(key){
@@ -391,7 +391,7 @@ function build(key){
   return {ym:key,courses:{planned:c.courses},
     credits:c.credits.map(function(t){return {id:uid(),tid:t.id,label:t.label,who:t.who,planned:t.amount||0,actual:t.kind?null:t.amount,done:false,kind:t.kind||null}}),
     fixed:c.fixed.filter(function(t){return tplOn(t,key)}).map(function(t){return {id:uid(),tid:t.id,label:t.label,group:t.group,planned:t.amount,actual:t.amount,paid:false}}),
-    extras:[]};
+    extras:[],shared:[]};
 }
 function tplEnd(t){return t.from&&t.months?shiftYm(t.from,t.months-1):null}
 function tplOn(t,key){return !t.from||(key>=t.from&&(!t.months||key<=tplEnd(t)))}
@@ -765,6 +765,29 @@ function fxSheet(x,m){
       return '<div class="todo tap" role="button" data-fx="link" data-id="'+esc(t.id)+'"><span><b>'+esc(bkTitle(t))+(ex?' ✓':'')+'</b><small class="muted">'+esc(t.date||'')+'</small></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune opération disponible ce mois-ci.</div>')+
     '<button class="btn" style="margin-top:8px" data-fx="close">Fermer</button></div>'}
 var fixLast=0;
+function vShared(){
+  var m=getM(ym),S=(m.shared||[]).slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
+  var H=nsName('h'),L=nsName('l'),r2=function(x){return Math.round(x*100)/100};
+  var tot=r2(sum(S,function(x){return num(x.v)})),ph=r2(sum(S.filter(function(x){return x.by==='h'}),function(x){return num(x.v)})),pl=r2(sum(S.filter(function(x){return x.by==='l'}),function(x){return num(x.v)})),pb=r2(sum(S.filter(function(x){return x.by==='b'}),function(x){return num(x.v)}));
+  var op=S.filter(function(x){return x.by!=='b'&&!x.settled}),net=r2(sum(op,function(x){return (x.by==='h'?1:-1)*num(x.v)/2}));
+  var head='<section class="card"><h2>Dépenses partagées 50/50 · hors budget</h2><div class="big '+(net===0?'':(net>0?'pos':'neg'))+'" style="font-size:30px">'+(net===0?'Quitte':fmt(Math.abs(net)))+'</div>'+
+    '<div class="small muted" style="margin:6px 0 10px">Solde à régler · '+(net>0?esc(L)+' doit à '+esc(H):(net<0?esc(H)+' doit à '+esc(L):'rien à rembourser'))+'</div>'+
+    '<div class="kp3"><div class="kpi"><div class="l">Part de chacun</div><div class="v">'+fmt(r2(tot/2))+'</div></div><div class="kpi"><div class="l">Payé '+esc(H)+'</div><div class="v">'+fmt(ph)+'</div></div><div class="kpi"><div class="l">Payé '+esc(L)+'</div><div class="v">'+fmt(pl)+'</div></div></div>'+
+    (pb?'<div class="tags" style="margin-top:8px"><span class="tag">Compte joint '+fmt(pb)+'</span></div>':'')+'<p class="small muted" style="margin:10px 0 0">Non compté dans le budget, les PAF ni les extras.</p></section>';
+  var rows=S.map(function(x){var j=x.by==='b';
+    return '<div class="row'+((x.settled||j)?' is-done':'')+'"><label class="chk"><input type="checkbox" data-list="shared" data-f="settled" data-id="'+x.id+'"'+((x.settled||j)?' checked':'')+(j?' disabled':'')+' aria-label="Réglé"><span></span></label>'+
+      '<div class="t"><span class="nm">'+esc(x.label)+'</span><div class="tags"><span class="tag">'+esc(nsDate(x.date))+'</span><span class="tag '+(j?'tw':'tb')+'">payé par '+esc(nsName(x.by))+'</span>'+(j?'<span class="tag">sans solde</span>':'<span class="tag">part '+fmt(r2(num(x.v)/2))+'</span>')+'</div></div>'+
+      '<input class="num" inputmode="decimal" data-list="shared" data-f="v" data-n="1" data-id="'+x.id+'" value="'+inp(x.v)+'" aria-label="Montant">'+
+      '<button class="x" data-act="del" data-list="shared" data-id="'+x.id+'" aria-label="Supprimer">×</button></div>'}).join('');
+  var today=d0.toISOString().slice(0,10),def=today.slice(0,7)===ym?today:ym+'-01';
+  return head+(rows?'<section class="card">'+rows+'</section>':'<div class="empty card">Aucune dépense partagée ce mois-ci.</div>')+
+    adOpen('shared','Ajouter une dépense partagée')+'<form class="form" data-form="add-shared">'+
+    '<input type="text" name="label" placeholder="Libellé (ex. Restaurant)" required aria-label="Libellé">'+
+    '<input type="text" name="amount" inputmode="decimal" placeholder="Montant total" required aria-label="Montant total">'+
+    '<input type="date" name="date" value="'+def+'" aria-label="Date">'+
+    '<select name="by" aria-label="Payé par"><option value="h">Payé par '+esc(H)+'</option><option value="l">Payé par '+esc(L)+'</option><option value="b">Payé par le compte joint</option></select>'+
+    '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
+}
 function vFix(m,c,xt){
   var groups=xt?['Extra']:GROUPS.slice(); if(!xt)m.fixed.forEach(function(x){if(!isX(x)&&groups.indexOf(x.group)<0)groups.push(x.group)});
   var P0=xt?c.xPlanned:c.kPlanned,P1=xt?c.xPaid:c.kPaid,P2=xt?c.xRemain:c.kRemain,pool=m.fixed.filter(function(x){return xt?isX(x):!isX(x)});
@@ -793,7 +816,7 @@ function vFix(m,c,xt){
       '<input type="hidden" name="group" value="Extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>':(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
+      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+vShared():(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
@@ -1162,7 +1185,7 @@ function syncPending(){var m=syMeta();return syIds().some(function(id){var d=doc
 function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
 function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
   (a.del||[]).concat(b.del||[]).forEach(function(k){dead[k]=1});
-  ['fixed','credits','extras'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
+  ['fixed','credits','extras','shared'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
     (o[l]||[]).forEach(function(x){var k=syKey(x,l);if(!have[k]&&!dead[k])r[l].push(clone(x))})});
   r.del=Object.keys(dead).slice(-300);
   r.bankSeen=Object.assign({},o.bankSeen||{},r.bankSeen||{});return r}
@@ -1388,6 +1411,7 @@ document.addEventListener('submit',function(e){
   if(!label)return;
   if(k==='add-fixed'){editM(ym).fixed.push({id:uid(),label:label,group:fd.get('group'),planned:amount,actual:amount,paid:false});commitM()}
   else if(k==='add-credit'){editM(ym).credits.push({id:uid(),label:label,who:fd.get('who'),planned:amount,actual:amount,done:false});commitM()}
+  else if(k==='add-shared'){editM(ym).shared.push({id:uid(),label:label,v:Math.abs(amount),date:fd.get('date')||d0.toISOString().slice(0,10),by:fd.get('by'),settled:false});commitM()}
   else if(k==='add-extra'){editM(ym).extras.push({id:uid(),label:label,cat:fd.get('cat'),amount:amount,date:fd.get('date')});commitM()}
   else if(k==='ns-add'){var by=fd.get('by'),ow=fd.get('owe');
     if(ow!=='b'&&ow===by){nsErr='Celui qui avance ne peut pas être celui qui rembourse.';render();return}
