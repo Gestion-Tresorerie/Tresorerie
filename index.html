@@ -995,11 +995,12 @@ var edErr='';
 function edSheet(e){
   var f=!!e.bankId,sp='';
   if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),xf=mm.fixed.filter(function(y){return y.group==='Extra'&&!y.paid}),so=(mm.shared||[]);
+    var cl=!col&&bank.token&&(lkLines(mm).length||lkXt(mm).length);
     var opt=function(arr,g){return arr.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(g(y))+'</option>'}).join('')};
     sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Rattache à un extra existant (crée-le d’abord dans Charges extra) et saisis la somme (vide = montant de la ligne choisie).</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
-    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<button class="btn" data-ed="split">Répartir</button></div>'}
+    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-ed="split">Répartir</button>'+(cl?'<button class="btn" data-lk="from" data-id="'+e.id+'">Relier un débit</button>':'')+'</div>'+(cl?'':'<p class="small muted" style="margin:8px 0 0">« Relier un débit » regroupe plusieurs achats saisis ou extras prévus sous ce débit : aucun à relier pour l’instant.</p>')+'</div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
     '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
@@ -1126,6 +1127,7 @@ document.addEventListener('click',function(e){
   if(a==='open'){lk={on:true,tx:null,sel:{}};var sg=lkTx(m).filter(function(x){return lkPick(m,x.amount)})[0];
     if(sg){lk.tx=sg.id;lkPick(m,sg.amount).forEach(function(id){lk.sel[id]=1})}
     state.tab='depenses';render();window.scrollTo(0,0)}
+  else if(a==='from'){lk={on:true,tx:t.dataset.id,sel:{}};var fx0=lkTx(m).filter(function(y){return y.id===lk.tx})[0],fp=fx0&&lkPick(m,fx0.amount);(fp||[]).forEach(function(id){lk.sel[id]=1});ed.id=null;state.tab='depenses';render();window.scrollTo(0,0)}
   else if(a==='tx'){lk.tx=t.dataset.id;lk.sel={};var x=lkTx(m).filter(function(y){return y.id===lk.tx})[0],p=x&&lkPick(m,x.amount);(p||[]).forEach(function(id){lk.sel[id]=1});render()}
   else if(a==='tog'){lk.sel[t.dataset.id]=!lk.sel[t.dataset.id];render()}
   else if(a==='cancel'){lk={on:false,tx:null,sel:{}};render()}
