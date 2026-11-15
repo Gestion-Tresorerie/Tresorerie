@@ -1577,7 +1577,7 @@ var PE_CATS=['Courses','Restaurants','Transport','Santé','Loisirs','Abonnements
 try{pe.key=localStorage.getItem('budget-perso-key')||null}catch(e){}
 function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso-v1')||'null')}catch(e){}
   if(!d||typeof d.ts!=='number'||!d.data)d={ts:0,data:{}};pe.doc=peFix(d)}
-function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};return d}
+function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};x.rules=(x.rules&&typeof x.rules==='object')?x.rules:{};return d}
 peNorm();
 function peStore(){try{localStorage.setItem('budget-perso-v1',JSON.stringify(pe.doc))}catch(e){}}
 function peCall(path,opts){
@@ -1622,10 +1622,12 @@ function peGuess(t){var L=String(t.label||'').toUpperCase();
   if(/NETFLIX|SPOTIFY|PRIME VIDEO|CANAL|DISNEY|ABONN|APPLE\.COM|GOOGLE/.test(L))return 'Abonnements';
   if(/AMAZON|FNAC|ZARA|DECATHLON|CDISCOUNT|ALIEXPRESS/.test(L))return 'Shopping';
   return 'Autre'}
-function peCat(t){var o=pe.doc.data.tx[t.id];return (o&&o.cat)||peGuess(t)}
+function peKey(l){var w=String(l||'').toUpperCase().replace(/REF\s*:.*$/,'').replace(/[0-9]+[A-Z]?/g,' ').replace(/[^A-ZÀ-Ý ]/g,' ').split(/\s+/).filter(function(x){return x.length>2&&!/^(VIR|RECU|EMIS|CB|PRLV|DE|LE|DU|PAR|EUR|CARTE|PAIEMENT)$/.test(x)});return w.slice(0,3).join(' ')}
+function peCat(t){var D=pe.doc.data,o=D.tx[t.id];if(o&&o.cat)return o.cat;var k=peKey(t.label),r=k&&D.rules&&D.rules[k];if(r&&((r==='Revenu')===(t.amount>0)||t.amount<0))return r;return peGuess(t)}
 function peMk(t){var d=String(t.date||''),b=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(b))return b;var c=peCat(t);return (+d.slice(8,10)>=29&&(c==='Revenu'||c==='Foyer'))?shiftYm(b,1):b}
+function peRuled(t){var k=peKey(t.label);return !!(k&&pe.doc.data.rules&&pe.doc.data.rules[k])}
 function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===ym})}
-function peFoyerDue(){var m=getV(ym);return Math.round(sum((m.credits||[]).filter(function(c){return c.who==='Hasina'&&/paf/.test(String(c.kind||''))}),function(c){return num(c.done&&c.actual!=null?c.actual:c.planned)})*100)/100}
+function peFoyerDue(){var c=calc(getV(ym)),i=state.config.contributors.indexOf('Hasina');return c&&c.S?Math.round(c.S.share[i<=0?0:1]*100)/100:0}
 function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','Budget'],['foyer','Foyer'],['compte','Compte']];
   return '<div class="pseg" role="tablist">'+L.map(function(x){return '<button type="button" role="tab" data-pe="sub" data-v="'+x[0]+'" aria-selected="'+(pe.sub===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'}
 function vPerso(){
@@ -1638,9 +1640,9 @@ function vPerso(){
   var D=pe.doc.data,st=pe.st,T=peMonth(),sub=pe.sub||'apercu';pe.sub=sub;
   var rcv=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),rcvS=Math.round(sum(rcv,function(t){return t.amount})*100)/100,
     inc=rcv.length?rcvS:Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
-    deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0;
-  deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c!=='Fixe'&&c!=='Ignorer')vr+=a;if(!pe.doc.data.tx[t.id])todo++});
-  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;var reste=Math.round((inc-fix-foy-vr)*100)/100;
+    deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0,fixT=0;
+  deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c==='Fixe'||c==='Abonnements')fixT+=a;else if(c!=='Ignorer'&&c!=='Revenu')vr+=a;if(!pe.doc.data.tx[t.id]&&!peRuled(t))todo++});
+  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;if(fixT>0)fix=fixT;var reste=Math.round((inc-fix-foy-vr)*100)/100;
   var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
   h+='<section class="card phead"><div><div class="small muted">Solde Société Générale</div><div class="big" style="font-size:28px">'+(pe.bal?fmt(pe.bal.amount):'—')+'</div>'+
     (pe.fetched?'<div class="small muted">MàJ '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'')+'</div>'+
@@ -1651,8 +1653,8 @@ function vPerso(){
     h+='<section class="card"><h2>Reste à vivre · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:30px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Revenus − charges fixes − virement foyer − dépenses · les virements reçus ou envoyés à partir du 29 comptent pour le mois suivant</div>'+
       [[rcv.length?'Revenus reçus':'Revenus attendus',inc],['Charges fixes',-fix],['Virement foyer',-foy],['Dépenses variables',-vr]].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
     if(todo)h+='<div class="note">'+todo+' opération'+(todo>1?'s':'')+' non classée'+(todo>1?'s':'')+' manuellement (catégorie devinée) · <button class="btn mini lnk" data-pe="sub" data-v="ops">Classer</button></div>';
-    var mx=0;PE_CATS.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
-    h+='<section class="card"><h2>Dépenses par catégorie</h2>'+PE_CATS.filter(function(c){return (by[c]||0)>0||num(D.env[c])>0}).map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
+    var ALLC=PE_CATS.concat(['Fixe','Foyer']),mx=0;ALLC.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
+    h+='<section class="card"><h2>Dépenses par catégorie</h2>'+ALLC.filter(function(c){return (by[c]||0)>0||num(D.env[c])>0}).map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
       return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(c)+'</span><span class="n '+(b&&sp>b?'neg':'')+'">'+fmt(sp)+(b?' / '+fmt(b):'')+'</span></div>'+bar(sp,Math.max(b,mx||1))+'</div>'}).join('')||'<div class="empty">Aucune dépense ce mois-ci.</div>';
     h+='</section>';
   }else if(sub==='ops'){
@@ -1661,10 +1663,13 @@ function vPerso(){
         '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
         '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
   }else if(sub==='budget'){
-    h+='<section class="card"><h2>Revenus</h2>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu.</div>')+'</section>'+
-      adOpen('peinc','Ajouter un revenu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
-      '<section class="card"><h2>Charges fixes</h2>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge fixe.</div>')+'</section>'+
-      adOpen('pefix','Ajouter une charge fixe')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+    var fxl=deb.filter(function(t){var c=peCat(t);return c==='Fixe'||c==='Abonnements'||c==='Foyer'}).sort(function(x,y){return peCat(x).localeCompare(peCat(y))});
+    h+='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
+      '<div class="grp"><b>Prévus (saisis)'+(rcv.length?' · ignorés tant que des revenus sont reçus':'')+'</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu saisi.</div>')+'</section>'+
+      adOpen('peinc','Ajouter un revenu prévu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+      '<section class="card"><h2>Charges fixes · '+esc(ymLabel(ym))+'</h2>'+(fxl.length?'<div class="grp"><b>Opérations taguées Fixe / Abonnements / Foyer</b></div>'+fxl.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
+      '<div class="grp"><b>Prévues (saisies)'+(fixT>0?' · ignorées tant que des opérations sont taguées':'')+'</b></div>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge saisie.</div>')+'</section>'+
+      adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
       adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
   }else if(sub==='foyer'){
     var due=peFoyerDue(),gap=Math.round((due-foy)*100)/100,fl=deb.filter(function(t){return peCat(t)==='Foyer'});
@@ -1689,7 +1694,7 @@ document.addEventListener('click',function(e){
   else if(a==='tgl'){if(e.target.closest('[data-pe="delfix"]'))return;var k=ym+':'+t.dataset.id;if(D.paid[k])delete D.paid[k];else D.paid[k]=1;peSave()}
 });
 document.addEventListener('change',function(e){
-  var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data;D.tx[s.dataset.pecat]={cat:s.value};peSave()});
+  var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data,id=s.dataset.pecat;D.tx[id]={cat:s.value};var t=(pe.tx||[]).filter(function(x){return x.id===id})[0],k=t&&peKey(t.label);if(k)D.rules[k]=s.value;peSave()});
 document.addEventListener('submit',function(e){
   var f=e.target.closest('[data-peform]');if(!f)return;e.preventDefault();var k=f.dataset.peform,fd=new FormData(f),D=pe.doc.data;
   if(k==='unlock'){pe.key=String(fd.get('password')||'');try{localStorage.setItem('budget-perso-key',pe.key)}catch(x){}pe.loaded=true;pe.msg='';peLoad();return}
