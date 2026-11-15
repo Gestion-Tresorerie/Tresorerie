@@ -588,7 +588,7 @@ function initDb(){
 function paintStatus(){var el=$('#status');if(!el)return;
   if(col){var s=STATUS[state.status]||STATUS.loading;el.className='chip '+s.cls;el.textContent=s.txt;return}
   var t='Synchroniser',c='';
-  if(sy.busy){t='Synchro…'}else if(sy.err){t='Échec · réessayer';c=' bad'}else if(syncPending()){t='Valider';c=' warn'}else if(sy.ok){t='Synchronisé';c=' ok'}
+  if(sy.busy){t='Synchro…'}else if(sy.err){t='Échec · réessayer';c=' bad'}else if(syncPending()){t='Synchroniser · '+syncCount();c=' warn'}else if(sy.ok&&syLast){t='Synchronisé '+new Date(syLast).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});c=' ok'}
   el.className='chip'+c;el.textContent=t;el.disabled=!!sy.busy}
 function bar(v,max,good){var p=max>0?Math.max(0,Math.min(100,v/max*100)):0;var k=good?(max>0&&v>=max-0.005?' ok':''):(v>max&&max>0?' over':'');return '<div class="bar'+k+'"><i style="width:'+p.toFixed(1)+'%"></i></div>'}
 function who(m){return state.config.contributors.concat(['Autre'])}
@@ -624,7 +624,7 @@ function vTodo(m,c){
   if(st&&st.linked){var vu=st.valid_until?new Date(st.valid_until):null,dd=vu?Math.ceil((vu-new Date())/864e5):null;
     if(st.expired||(dd!=null&&dd<=10))it.push({tab:'banque',t:'Renouveler le consentement Fortuneo',v:st.expired?'expiré':dd+' j',cls:'neg'})}
   if(!col&&bank.token){var sg=lkTx(m).filter(function(e){return lkPick(m,e.amount)})[0];if(sg)it.push({lk:1,t:'Débit '+fmt(sg.amount)+' à relier à vos achats',v:'Relier',d:sg.label})}
-  if(!col&&syncPending())it.push({act:'sync',t:'Modifications non synchronisées',v:'Valider',d:'Envoie-les pour les retrouver sur l’autre téléphone'});
+  if(!col&&syncPending())it.push({act:'sync',t:'Modifications non synchronisées',v:'Synchroniser',d:'Rien n’est envoyé tant que tu ne synchronises pas'});
   return '<section class="card"><h2>À faire</h2>'+(it.length?it.map(function(x){return '<div class="todo tap" role="button"'+(x.lk?' data-lk="open"':' data-act="'+(x.act||'tab')+'"'+(x.tab?' data-tab="'+x.tab+'"':''))+'><span><b>'+esc(x.t)+'</b>'+(x.d?'<small class="muted">'+esc(x.d)+'</small>':'')+'</span><span class="n '+(x.cls||'')+'">'+esc(x.v||'')+' ›</span></div>'}).join(''):'<div class="empty" style="padding:6px 0">Rien à faire : tout est à jour ✓</div>')+'</section>';
 }
 var synLast=0;
@@ -1343,11 +1343,12 @@ function bankSync(){
 
 var sy={busy:false,err:'',ok:false},SYM='budget-sync-meta';
 var syT=null,syLast=0;
-function schedSync(){if(!bank.token)return;clearTimeout(syT);syT=setTimeout(function(){if(sy.busy){schedSync();return}doSync(true)},2500)}
+function schedSync(){return;if(!bank.token)return;clearTimeout(syT);syT=setTimeout(function(){if(sy.busy){schedSync();return}doSync(true)},2500)}
 function typing(){var a=document.activeElement;return !!(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))}
 function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e){return {}}}
 function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
-function syncPending(){var m=syMeta();return syIds().some(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)})}
+function syncCount(){var m=syMeta();return syIds().filter(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)}).length}
+function syncPending(){return syncCount()>0}
 function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
 function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
   (a.del||[]).concat(b.del||[]).forEach(function(k){dead[k]=1});
@@ -1880,7 +1881,7 @@ loadLocal();applySeed();applyModel();bankFix1();migCourses();applyInc();migModel
 (function(){var q=/#perso=(\w+)/.exec(location.hash||'');if(q){state.tab='perso';pe.msg=q[1]==='ok'?'':'La connexion à la Société Générale a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
-if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-syLast>10000&&!sy.busy)doSync(true)});setInterval(function(){if(document.visibilityState==='visible'&&!sy.busy&&!typing()&&Date.now()-syLast>45000)doSync(true)},30000)}
+if(bank.token){bankLoad()}
 initDb();
 })();
 </script>
