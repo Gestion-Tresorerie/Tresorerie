@@ -999,21 +999,25 @@ function edSheet(e){
   var f=!!e.bankId,sp='';
   if(f){var mm=getM(ym),xo=mm.extras.filter(function(y){return y.cat==='Extra'&&!y.bankId&&!y.from&&y.id!==e.id}),xf=mm.fixed.filter(function(y){return y.group==='Extra'&&!y.paid}),so=(mm.shared||[]),fl=mm.fixed.filter(function(y){return y.group!=='Extra'&&!y.paid&&!y.grp});
     var cl=!col&&bank.token;
-    var btns='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button class="btn'+(ed.mode==='rep'?' primary':'')+'" data-ed="mode" data-m="rep">Répartir</button>'+(cl?'<button class="btn" data-lk="from" data-id="'+e.id+'">Relier à un débit</button>':'')+'<button class="btn'+(ed.mode==='fix'?' primary':'')+'" data-ed="mode" data-m="fix">Rattacher à une charge fixe</button></div>',
-      fixl=fl.length?fl.map(function(y){return '<div class="todo tap" role="button" data-ed="fixone" data-id="'+y.id+'"><span><b>'+esc(y.label)+'</b><small class="muted">'+esc(y.group||'')+'</small></span><span class="n">'+fmt(y.planned)+'</span></div>'}).join(''):'<div class="empty">Aucune charge fixe non payée ce mois-ci.</div>';
+    var btns='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button class="btn'+(ed.mode==='rep'?' primary':'')+'" data-ed="mode" data-m="rep">Répartir</button>'+'<button class="btn'+(ed.mode==='lnk'?' primary':'')+'" data-ed="mode" data-m="lnk">Relier à une charge</button></div>',
+      lrow=function(k,y,amt,sub){var key=k+':'+y.id,on=ed.sel&&ed.sel[key];return '<div class="todo tap" role="button" data-ed="lnktog" data-id="'+key+'"><span><b>'+(on?'☑':'☐')+' '+esc(y.label)+'</b><small class="muted">'+esc(sub||'')+'</small></span><span class="n">'+fmt(amt)+'</span></div>'},
+      lgrp=function(t,arr,k,g,sub){return arr.length?'<div class="grp" style="margin-top:10px"><b>'+t+'</b></div>'+arr.map(function(y){return lrow(k,y,g(y),sub(y))}).join(''):''},
+      lsel=Object.keys(ed.sel||{}).filter(function(k){return ed.sel[k]}),
+      lnkl='<div class="small muted" style="margin-bottom:6px">Coche les charges à relier (extra, charge fixe, 50/50). Chaque cible prend son montant, plafonné au reste ; le reste demeure dans le budget '+esc(e.cat)+'.</div>'+
+        (fl.length+xf.length+xo.length+so.length?lgrp('Charges fixes',fl,'f',function(y){return y.planned},function(y){return y.group})+lgrp('Charges extra à payer',xf,'f',function(y){return y.planned},function(){return 'extra'})+lgrp('Extras sur l’enveloppe',xo,'e',function(y){return y.amount},function(y){return y.date})+lgrp('Dépenses 50/50',so,'s',function(y){return y.v},function(y){return y.date})+'<button class="btn primary" style="margin-top:10px" data-ed="lnkok"'+(lsel.length?'':' disabled')+'>Valider</button>':'<div class="empty">Aucune charge à relier ce mois-ci : crée-la d’abord.</div>');
     var opt=function(arr,g){return arr.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(g(y))+'</option>'}).join('')};
     sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Choisis une action.</p>'+btns+(ed.mode==='rep'?'<p class="small muted" style="margin:0 0 8px">Saisis la somme de chaque cible (vide = montant de la ligne choisie) ; le reste va en '+esc(e.cat)+'. Les extras et 50/50 doivent exister déjà.</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><span class="small muted" style="flex:1.5">Payeur si nouvelle 50/50</span><select id="sp-by" aria-label="Payeur" style="flex:.7;min-width:0"><option value="b">Compte joint</option><option value="h">'+esc(nsName('h'))+'</option><option value="l">'+esc(nsName('l'))+'</option></select></div>'+
-    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-fx" aria-label="Charge fixe" style="flex:1.5;min-width:0"><option value="">Charge fixe : aucune</option>'+fl.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</select><input type="text" id="sp-fa" inputmode="decimal" placeholder="€" aria-label="Somme charge fixe" style="flex:.7;min-width:0"></div><button class="btn primary" data-ed="split">Valider la répartition</button>':(ed.mode==='fix'?'<div class="small muted" style="margin-bottom:6px">Touche la charge fixe à rattacher (montant prévu, plafonné au reste de l’opération). Pour une somme partielle, utilise Répartir.</div>'+fixl:''))+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-fx" aria-label="Charge fixe" style="flex:1.5;min-width:0"><option value="">Charge fixe : aucune</option>'+fl.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</select><input type="text" id="sp-fa" inputmode="decimal" placeholder="€" aria-label="Somme charge fixe" style="flex:.7;min-width:0"></div><button class="btn primary" data-ed="split">Valider la répartition</button>':(ed.mode==='lnk'?lnkl:''))+
     (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+((e.spl&&e.spl.length)?'<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-ed="unsplit">Défaire la répartition</button></div>':'')+'</div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
     '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="ed-amount" inputmode="decimal" value="'+inp(e.amount)+'"'+(f?' disabled':'')+' aria-label="Montant" style="flex:1;min-width:0"><input type="date" id="ed-date" value="'+esc(e.date||'')+'"'+(f?' disabled':'')+' aria-label="Date" style="flex:1;min-width:0"></div>'+
     (f?'<p class="small muted" style="margin:0 0 8px">Opération Fortuneo : montant et date non modifiables.</p>':'')+sp+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-ed="save">Enregistrer</button><button class="btn" data-ed="close">Fermer</button></div></div>'}
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+(f&&ed.mode?'':'<button class="btn primary" data-ed="save">Enregistrer</button>')+'<button class="btn" data-ed="close">Fermer</button></div></div>'}
 function bkChip(t){var c=bkClassify(t),o='';
   if(c.k==='fixed')o='<span class="tg ok">Charge</span>';else if(c.k==='paf')o='<span class="tg ok">PAF</span>';
   else if(c.k==='credit')o='<span class="tg">Crédit</span>';else o='<span class="tg">'+esc(c.cat)+'</span>';
@@ -1091,14 +1095,21 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-ed]');if(!t||e.target.closest('[data-act],[data-lk]'))return;var a=t.dataset.ed;
-  if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;ed.mode=null;edErr='';render()}
-  else if(a==='mode'){ed.mode=(ed.mode===t.dataset.m)?null:t.dataset.m;edErr='';render()}
-  else if(a==='fixone'){var mf=editM(ym),xf0=findBy(mf.extras,ed.id),fq1=findBy(mf.fixed,t.dataset.id);if(!xf0||!fq1)return;var fa1=Math.round(Math.min(fq1.planned,xf0.amount)*100)/100;
-    if(fa1<0.005){edErr='Rien à répartir : il ne reste rien sur cette opération.';render();return}
-    if(!xf0.tot)xf0.tot=xf0.amount;xf0.spl=xf0.spl||[];xf0.spl.push({k:'f',id:fq1.id,a:fa1,o:[fq1.planned,fq1.actual,!!fq1.paid,!!fq1.bank]});
-    fq1.bk=Math.round(((fq1.bk||0)+fa1)*100)/100;fq1.paid=true;fq1.actual=fa1;fq1.bank=true;xf0.amount=Math.round((xf0.amount-fa1)*100)/100;edErr='';ed.id=null;ed.mode=null;commitM()}
+  if(a==='open'){ed.id=(ed.id===t.dataset.id)?null:t.dataset.id;ed.mode=null;ed.sel={};edErr='';render()}
+  else if(a==='mode'){ed.mode=(ed.mode===t.dataset.m)?null:t.dataset.m;ed.sel={};edErr='';render()}
+  else if(a==='lnktog'){ed.sel=ed.sel||{};ed.sel[t.dataset.id]=!ed.sel[t.dataset.id];render()}
+  else if(a==='lnkok'){var ml=editM(ym),xl=findBy(ml.extras,ed.id),ks=Object.keys(ed.sel||{}).filter(function(k){return ed.sel[k]}),rl=function(v){return Math.round(v*100)/100};
+    if(!xl||!ks.length){edErr='Coche au moins une charge.';render();return}
+    if(xl.amount<0.005){edErr='Rien à répartir : il ne reste rien sur cette opération.';render();return}
+    var llb=String(($('#ed-label')||{}).value||'').trim();if(llb)xl.label=llb.slice(0,48);var lct=($('#ed-cat')||{}).value;if(lct)xl.cat=lct;
+    if(!xl.tot)xl.tot=xl.amount;xl.spl=xl.spl||[];var rem=xl.amount;
+    ks.forEach(function(k){var kd=k.slice(0,1),id=k.slice(2),q=kd==='s'?findBy(ml.shared,id):(kd==='f'?findBy(ml.fixed,id):findBy(ml.extras,id));if(!q||rem<0.005)return;
+      var want=kd==='s'?q.v:(kd==='f'?q.planned:q.amount),am=rl(Math.min(want,rem));if(am<0.005)return;rem=rl(rem-am);
+      if(kd==='f'){xl.spl.push({k:'f',id:q.id,a:am,o:[q.planned,q.actual,!!q.paid,!!q.bank]});q.bk=rl((q.bk||0)+am);q.paid=true;q.actual=am;q.bank=true}
+      else{xl.spl.push({k:kd,id:q.id,a:am});q.bk=rl((q.bk||0)+am)}});
+    xl.amount=rem;edErr='';ed.id=null;ed.mode=null;ed.sel={};commitM()}
   else if(a==='close'){ed.id=null;render()}
-  else if(a==='split'){var m0=editM(ym),x0=findBy(m0.extras,ed.id);if(!x0)return;var r2=function(v){return Math.round(v*100)/100};
+  else if(a==='split'){var m0=editM(ym),x0=findBy(m0.extras,ed.id);if(!x0)return;var slb=String(($('#ed-label')||{}).value||'').trim();if(slb)x0.label=slb.slice(0,48);var sct=($('#ed-cat')||{}).value;if(sct)x0.cat=sct;var r2=function(v){return Math.round(v*100)/100};
     var xs=$('#sp-xt').value,ss=$('#sp-sh').value,xa=xs?num($('#sp-xa').value):0,sa=ss?num($('#sp-sa').value):0;
     var xk=xs.slice(0,1),xid=xs.slice(2),xq=xs?(xk==='f'?findBy(m0.fixed,xid):findBy(m0.extras,xid)):null;
     if(xs&&!xq){edErr='Extra introuvable.';render();return}
