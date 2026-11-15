@@ -1601,7 +1601,7 @@ function peTx(force){
   pe.busy=true;render();
   peCall('/perso/transactions'+(force?'?refresh=1':'')).then(function(x){
     pe.busy=false;
-    if(x.ok){pe.tx=x.d.transactions||[];pe.bal=x.d.balance||null;pe.fetched=x.d.fetched_at;pe.msg=''}
+    if(x.ok){pe.tx=x.d.transactions||[];pe.bal=x.d.balance||null;pe.fetched=x.d.fetched_at;pe.hist=x.d.from||null;pe.histFb=x.d.fallback?1:0;pe.msg=''}
     else pe.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement a expiré : reconnecte la Société Générale.':'Impossible de récupérer les opérations ('+(x.d&&x.d.error||x.status)+(x.d&&x.d.detail?' : '+(typeof x.d.detail==='string'?x.d.detail:JSON.stringify(x.d.detail)).slice(0,160):'')+').';
     render()}).catch(peFail);
 }
@@ -1645,8 +1645,9 @@ function vPerso(){
   foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;if(fixT>0)fix=fixT;var reste=Math.round((inc-fix-foy-vr)*100)/100;
   var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
   h+='<section class="card phead"><div><div class="small muted">Solde Société Générale</div><div class="big" style="font-size:28px">'+(pe.bal?fmt(pe.bal.amount):'—')+'</div>'+
-    (pe.fetched?'<div class="small muted">MàJ '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'')+'</div>'+
+    (pe.fetched?'<div class="small muted">'+(pe.hist?'Depuis le '+esc(pe.hist.split('-').reverse().join('/'))+' · ':'')+'MàJ '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>':'')+'</div>'+
     '<button class="btn" data-pe="refresh"'+(pe.busy||!st||!st.linked||st.expired?' disabled':'')+'>'+(pe.busy?'…':'Actualiser')+'</button></section>';
+  if(pe.histFb)h+='<div class="note warn">La banque refuse l’historique demandé : opérations limitées à 90 jours (depuis le '+esc(pe.hist||'')+').</div>';
   if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
   h+=peSegs();
   if(sub==='apercu'){
