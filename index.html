@@ -327,6 +327,7 @@ body{padding-bottom:28px}
 .card>.grp:first-child{margin-top:0}
 .line .nm,.row .nm,.mrow .nm{font-weight:500}
 .line .small,.line .tags{opacity:.85}
+#persoBtn[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -354,6 +355,7 @@ body{padding-bottom:28px}
   <button data-act="tab" data-tab="historique"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>Historique</button>
   <button data-act="tab" data-tab="modele"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Modèle</button>
   <button data-act="tab" data-tab="banque"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v7M9 10v7M15 10v7M19 10v7M3 20h18"/></svg>Banque</button>
+  <button data-act="tab" data-tab="perso" id="persoBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>Perso</button>
 </nav></div>
 
 <script>
@@ -1199,7 +1201,7 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-bank]');if(!t)return;var a=t.dataset.bank;
-  if(a==='logout'){bank.token=null;bank.st=null;bank.tx=null;try{localStorage.removeItem('budget-bank-token')}catch(x){}render()}
+  if(a==='logout'){bank.token=null;bank.st=null;bank.tx=null;peWipe();try{localStorage.removeItem('budget-bank-token')}catch(x){}render()}
   else if(a==='refresh'){bankTx(true)}
   else if(a==='filter'){bank.f=t.dataset.v;render()}
   else if(a==='connect'){bank.busy=true;render();bankCall('/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url){window.location.href=x.d.url}else{bank.busy=false;bank.msg='Connexion à Fortuneo impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(bankFail)}
@@ -1380,10 +1382,10 @@ function vNous(m,c,pg){
 var anLast={};
 function render(){
   $('#month').textContent=ymLabel(ym);
-  paintStatus();
+  paintStatus();try{pePaint()}catch(e){}
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele','banque'].indexOf(state.tab)>=0))?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,nous:vNous,cagnotte:vCag,historique:vHist,banque:vBank,modele:vModel,plus:vMore}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,nous:vNous,cagnotte:vCag,historique:vHist,banque:vBank,perso:vPerso,modele:vModel,plus:vMore}[state.tab];
   var keepFocus=null;
   var nowT=Date.now(),an=nowT-(anLast[state.tab]||0)>5000;anLast[state.tab]=nowT;
   $('#view').innerHTML='<div class="syn'+(an?' an':'')+'" style="display:contents">'+f(m,c)+'</div>';
@@ -1565,7 +1567,115 @@ function migModel(){
     if(c2)touch('m-'+k)});
 }
 function migCourses(){try{if(localStorage.getItem('budget-migc-v')==='1')return;Object.keys(state.months).forEach(function(k){var m=state.months[k],c=0;(m.extras||[]).forEach(function(e){if(e.bankId&&!e.grp&&(e.cat==='Autre'||!e.cat)){e.cat='Courses';c=1}});if(c)touch('m-'+k)});localStorage.setItem('budget-migc-v','1')}catch(e){}}
+/* ---------- Perso : compte Société Générale de Hasina (isolé du foyer, jamais dans la synchro commune) ---------- */
+var pe={key:null,doc:null,st:null,tx:null,bal:null,fetched:null,msg:'',busy:false,loaded:false};
+var PE_CATS=['Courses','Restaurants','Transport','Santé','Loisirs','Abonnements','Shopping','Épargne','Autre'],PE_SPEC=['Foyer','Fixe','Ignorer'];
+try{pe.key=localStorage.getItem('budget-perso-key')||null}catch(e){}
+function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso-v1')||'null')}catch(e){}
+  if(!d||typeof d.ts!=='number'||!d.data)d={ts:0,data:{}};pe.doc=peFix(d)}
+function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};return d}
+peNorm();
+function peStore(){try{localStorage.setItem('budget-perso-v1',JSON.stringify(pe.doc))}catch(e){}}
+function peCall(path,opts){
+  opts=opts||{};var h={'Content-Type':'application/json'};if(bank.token)h.Authorization='Bearer '+bank.token;if(pe.key)h['X-Perso']=pe.key;opts.headers=h;
+  return fetch(BANK_API+path,opts).then(function(r){return r.json().then(function(d){
+    if(r.status===403&&d&&d.error==='perso_verrouille'){pe.key=null;try{localStorage.removeItem('budget-perso-key')}catch(e){}}
+    return {ok:r.ok,status:r.status,d:d}})});
+}
+function peFail(){pe.busy=false;pe.msg='Passerelle injoignable. Vérifie ta connexion.';render()}
+function peSave(){pe.doc.ts=Date.now();peStore();if(pe.key)peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){});render()}
+function peLoad(){
+  if(!pe.key||!bank.token)return;pe.busy=true;render();
+  peCall('/perso/doc').then(function(x){
+    if(x.ok&&x.d.doc&&typeof x.d.doc.ts==='number'&&x.d.doc.ts>pe.doc.ts){pe.doc=peFix(x.d.doc);peStore()}
+    else if(x.ok&&pe.doc.ts>0&&(!x.d.doc||pe.doc.ts>x.d.doc.ts))peCall('/perso/doc',{method:'POST',body:JSON.stringify({doc:pe.doc})}).catch(function(){});
+    return peCall('/perso/status')}).then(function(x){
+    pe.busy=false;if(x.ok){pe.st=x.d;pe.msg='';render();if(x.d.linked&&!x.d.expired)peTx(false)}
+    else{pe.msg=pe.key?'Impossible de lire le compte perso ('+(x.d&&x.d.error||x.status)+').':'Mot de passe perso incorrect.';render()}}).catch(peFail);
+}
+function peTx(force){
+  pe.busy=true;render();
+  peCall('/perso/transactions'+(force?'?refresh=1':'')).then(function(x){
+    pe.busy=false;
+    if(x.ok){pe.tx=x.d.transactions||[];pe.bal=x.d.balance||null;pe.fetched=x.d.fetched_at;pe.msg=''}
+    else pe.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement a expiré : reconnecte la Société Générale.':'Impossible de récupérer les opérations ('+(x.d&&x.d.error||x.status)+').';
+    render()}).catch(peFail);
+}
+function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
+function peVisible(){return !!(bank.st&&bank.st.user==='hasina')}
+function pePaint(){var b=document.getElementById('persoBtn'),v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();if(b)b.hidden=!v;
+  if(v&&pe.key&&!pe.loaded){pe.loaded=true;setTimeout(peLoad,0)}}
+function peGuess(t){var L=String(t.label||'').toUpperCase();
+  if(t.amount>0)return 'Ignorer';
+  if(/FORTUNEO|COMPTE JOINT|\bPAF\b/.test(L))return 'Foyer';
+  if(/LIDL|CARREFOUR|LECLERC|AUCHAN|INTERMARCHE|MONOPRIX|CASINO|FRANPRIX|ALDI|BIOCOOP/.test(L))return 'Courses';
+  if(/RESTAU|MCDO|MCDONALD|BURGER|UBER EATS|DELIVEROO|BOULANG|KFC|PIZZ|CAFE/.test(L))return 'Restaurants';
+  if(/SNCF|TOTAL|ESSO|PEAGE|PARKING|NAVIGO|BLABLA|STATION|AUTOROUTE/.test(L))return 'Transport';
+  if(/PHARMA|DOCTEUR|MEDEC|OPTIC|DENTIST|MUTUELLE/.test(L))return 'Santé';
+  if(/NETFLIX|SPOTIFY|PRIME VIDEO|CANAL|DISNEY|ABONN|APPLE\.COM|GOOGLE/.test(L))return 'Abonnements';
+  if(/AMAZON|FNAC|ZARA|DECATHLON|CDISCOUNT|ALIEXPRESS/.test(L))return 'Shopping';
+  return 'Autre'}
+function peCat(t){var o=pe.doc.data.tx[t.id];return (o&&o.cat)||peGuess(t)}
+function peMonth(){return (pe.tx||[]).filter(function(t){return !t.pending&&String(t.date||'').slice(0,7)===ym})}
+function peFoyerDue(){var m=getV(ym);return Math.round(sum((m.credits||[]).filter(function(c){return c.who==='Hasina'&&/paf/.test(String(c.kind||''))}),function(c){return num(c.done&&c.actual!=null?c.actual:c.planned)})*100)/100}
+function vPerso(){
+  var h='';
+  if(bank.token&&!bank.st)return '<section class="card"><h2>Perso</h2><div class="small muted">Chargement…</div></section>';
+  if(!peVisible())return '<section class="card"><h2>Perso</h2><div class="empty">Section indisponible.</div></section>';
+  if(pe.msg)h+='<div class="note warn">'+esc(pe.msg)+'</div>';
+  if(!pe.key)return h+'<section class="card"><h2>Perso</h2><p class="small muted" style="margin:0 0 10px">Espace privé : entre ton mot de passe perso. Il n’est conservé que sur cet appareil.</p>'+
+    '<form class="form" data-peform="unlock"><input type="password" name="password" placeholder="Mot de passe perso" required autocomplete="current-password" aria-label="Mot de passe perso" class="full"><button class="btn primary full" type="submit"'+(pe.busy?' disabled':'')+'>Déverrouiller</button></form></section>';
+  var D=pe.doc.data,st=pe.st,T=peMonth(),i;
+  h+='<section class="card"><h2>Société Générale</h2>';
+  if(!st)h+='<div class="small muted">Chargement…</div>';
+  else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
+  else{var vu=st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null;
+    h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(st.expired||(days!=null&&days<=10)?'neg':'pos')+'">'+(st.expired?'Consentement expiré':(vu?'valide jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div>'+
+    (pe.bal?'<div class="big" style="font-size:26px;margin:6px 0">'+fmt(pe.bal.amount)+'</div><div class="small muted">Solde SG'+(pe.fetched?' · '+esc(new Date(pe.fetched).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'')+'</div>':'')+
+    '<div class="brow">'+(st.expired||(days!=null&&days<=10)?'<button class="btn primary" data-pe="connect">Renouveler</button>':'')+'<button class="btn" data-pe="refresh"'+(pe.busy||st.expired?' disabled':'')+'>Actualiser</button></div>'}
+  h+='<div class="brow"><button class="btn mini lnk" data-pe="lock">Verrouiller cet appareil</button></div></section>';
+  var inc=Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
+    deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0;
+  deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(c==='Foyer')foy+=a;else if(c!=='Fixe'&&c!=='Ignorer')vr+=a});
+  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;var reste=Math.round((inc-fix-foy-vr)*100)/100;
+  h+='<section class="card"><h2>Mon budget · '+esc(ymLabel(ym))+'</h2><div class="big '+(reste<0?'neg':'pos')+'" style="font-size:28px">'+fmt(reste)+'</div><div class="small muted" style="margin:4px 0 10px">Reste à vivre = revenus − charges fixes − versement foyer − dépenses</div>'+
+    [['Revenus',inc,''],['Charges fixes perso',-fix,''],['Versement au foyer',-foy,''],['Dépenses variables',-vr,'']].map(function(r){return '<div class="line"><span>'+r[0]+'</span><span class="n '+(r[1]<0?'neg':'')+'">'+fmt(r[1])+'</span></div>'}).join('')+'</section>';
+  var due=peFoyerDue(),gap=Math.round((due-foy)*100)/100,fl=deb.filter(function(t){return peCat(t)==='Foyer'});
+  h+='<section class="card"><h2>Lien avec le foyer</h2><div class="line"><span>PAF attendue (Hasina)</span><span class="n">'+fmt(due)+'</span></div><div class="line"><span>Virée depuis la SG</span><span class="n">'+fmt(foy)+'</span></div><div class="line"><span>Écart</span><span class="n '+(Math.abs(gap)<0.015?'pos':'neg')+'">'+(Math.abs(gap)<0.015?'0,00 €':sgn(gap))+'</span></div>'+
+    (fl.length?'<div class="grp"><b>Virements au foyer</b></div>'+fl.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucun virement classé « Foyer » ce mois-ci.</div>')+'</section>';
+  var mx=0;PE_CATS.forEach(function(c){mx=Math.max(mx,by[c]||0,num(D.env[c]))});
+  h+='<section class="card"><h2>Enveloppes</h2>'+PE_CATS.map(function(c){var sp=Math.round((by[c]||0)*100)/100,b=num(D.env[c]);
+    return '<div style="margin-bottom:10px"><div class="line" style="border:0;padding:0 0 4px"><span>'+esc(c)+'</span><span class="n '+(b&&sp>b?'neg':'')+'">'+fmt(sp)+(b?' / '+fmt(b):'')+'</span></div>'+bar(sp,Math.max(b,mx||1))+'</div>'}).join('')+'</section>'+
+    adOpen('peenv','Modifier les enveloppes')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
+  h+='<section class="card"><h2>Revenus & charges fixes perso</h2><div class="grp"><b>Revenus</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu.</div>')+
+    '<div class="grp"><b>Charges fixes</b></div>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge fixe.</div>')+'</section>'+
+    adOpen('peinc','Ajouter un revenu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+    adOpen('pefix','Ajouter une charge fixe')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
+  h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(T.length?T.map(function(t){var c=peCat(t);
+    return '<div class="line" style="flex-wrap:wrap"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span>'+
+      '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie" style="flex-basis:100%">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée : connecte la Société Générale.')+'</div>')+'</section>';
+  return h}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-pe]');if(!t)return;var a=t.dataset.pe,D=pe.doc.data;
+  if(a==='connect'){pe.busy=true;render();peCall('/perso/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url)window.location.href=x.d.url;else{pe.busy=false;pe.msg='Connexion impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(peFail)}
+  else if(a==='refresh')peTx(true);
+  else if(a==='lock'){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.loaded=false;try{localStorage.removeItem('budget-perso-key')}catch(x){}render()}
+  else if(a==='delinc'){D.incomes=D.incomes.filter(function(x){return x.id!==t.dataset.id});peSave()}
+  else if(a==='delfix'){e.stopPropagation();D.fixed=D.fixed.filter(function(x){return x.id!==t.dataset.id});peSave()}
+  else if(a==='tgl'){if(e.target.closest('[data-pe="delfix"]'))return;var k=ym+':'+t.dataset.id;if(D.paid[k])delete D.paid[k];else D.paid[k]=1;peSave()}
+});
+document.addEventListener('change',function(e){
+  var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data;D.tx[s.dataset.pecat]={cat:s.value};peSave()});
+document.addEventListener('submit',function(e){
+  var f=e.target.closest('[data-peform]');if(!f)return;e.preventDefault();var k=f.dataset.peform,fd=new FormData(f),D=pe.doc.data;
+  if(k==='unlock'){pe.key=String(fd.get('password')||'');try{localStorage.setItem('budget-perso-key',pe.key)}catch(x){}pe.loaded=true;pe.msg='';peLoad();return}
+  var label=String(fd.get('label')||'').trim().slice(0,48),amount=num(fd.get('amount'));
+  if(k==='inc'&&label&&amount>0){D.incomes.push({id:uid(),label:label,amount:amount});peSave()}
+  else if(k==='fix'&&label&&amount>0){D.fixed.push({id:uid(),label:label,amount:amount});peSave()}
+  else if(k==='env'){PE_CATS.forEach(function(c){var v=num(fd.get('e_'+c));if(v>0)D.env[c]=v;else delete D.env[c]});peSave()}
+});
 loadLocal();applySeed();applyModel();bankFix1();migCourses();applyInc();migModel();try{nsSync()}catch(e){}
+(function(){var q=/#perso=(\w+)/.exec(location.hash||'');if(q){state.tab='perso';pe.msg=q[1]==='ok'?'':'La connexion à la Société Générale a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
 if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-syLast>10000&&!sy.busy)doSync(true)});setInterval(function(){if(document.visibilityState==='visible'&&!sy.busy&&!typing()&&Date.now()-syLast>45000)doSync(true)},30000)}
