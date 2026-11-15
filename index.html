@@ -1598,7 +1598,7 @@ function peTx(force){
   peCall('/perso/transactions'+(force?'?refresh=1':'')).then(function(x){
     pe.busy=false;
     if(x.ok){pe.tx=x.d.transactions||[];pe.bal=x.d.balance||null;pe.fetched=x.d.fetched_at;pe.msg=''}
-    else pe.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement a expiré : reconnecte la Société Générale.':'Impossible de récupérer les opérations ('+(x.d&&x.d.error||x.status)+').';
+    else pe.msg=x.d&&x.d.error==='consentement_expire'?'Le consentement a expiré : reconnecte la Société Générale.':'Impossible de récupérer les opérations ('+(x.d&&x.d.error||x.status)+(x.d&&x.d.detail?' : '+(typeof x.d.detail==='string'?x.d.detail:JSON.stringify(x.d.detail)).slice(0,160):'')+').';
     render()}).catch(peFail);
 }
 function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
