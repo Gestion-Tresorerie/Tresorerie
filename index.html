@@ -628,7 +628,7 @@ function vSynth(m,c){
   var unpK=m.fixed.filter(function(x){return !isX(x)&&!x.paid}).length,unpX=m.fixed.filter(function(x){return isX(x)&&!x.paid}).length,nK=m.fixed.filter(function(x){return !isX(x)}).length,nX=m.fixed.length-nK;
   var fp=c.kPlanned>0?c.kPaid/c.kPlanned*100:0,fk=unpK?'o':'g';
   var rp=c.restoPlanned>0?c.restoSpent/c.restoPlanned*100:(c.restoSpent>0?101:0),rk=rp>100?'r':(rp>=80?'o':'g');
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.kPaid,c.kPlanned)+'</div>';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.kPaid,c.kPlanned)+'</div>';
   return ''+
   (function(){var b=balNow(),dd=b&&b.date?'au '+esc(String(b.date).slice(0,10).split('-').reverse().join('/'))+' · ':'';
     return '<section class="card hero glow '+(b&&b.amount<0?'gneg':'gpos')+'"><h2>Solde Fortuneo</h2>'+(b?'<div class="big '+(b.amount>=0?'pos':'neg')+'">'+(b.amount<0?sgn(b.amount):fmt(b.amount))+'</div>'+balSpark()+'<div class="small muted" style="margin-top:6px">'+dd+'maj '+esc(new Date(b.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(b.n?'<div class="small" style="margin-top:4px"><span class="tag tw">dont '+sgn(b.pend)+' en attente ('+b.n+' opération'+(b.n>1?'s':'')+')</span> <span class="muted" style="white-space:nowrap">comptable '+fmt(b.booked)+'</span></div>':(b.avail?'<div class="small muted" style="margin-top:4px">Solde disponible : inclut les opérations en attente</div>':'')):'<div class="big muted">—</div><div class="small muted" style="margin-top:6px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div>')+'</section>'})()+
@@ -815,7 +815,7 @@ function vDep(m,c){
     return '<div class="rtile envt"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div>'+
       '<label class="rs envin"><span>sur</span><input class="num" inputmode="decimal" '+attr+'="1" value="'+inp(pl)+'" aria-label="'+aria+'"><span>€</span></label>'+
       (rem&&!over?'':'<div class="rs '+(over?'neg':'')+'">'+(over?'Dépassement '+fmt(sp-pl):'Reste '+fmt(pl-sp))+'</div>')+(hint?'<div class="rs">'+hint+'</div>':'')+'</div>'};
-  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','')+envT('Ticket-resto',c.restoSpent,c.restoPlanned,'data-resto','Budget ticket-resto','hors PAF',1)+'</div>'+
+  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','',1)+envT('Ticket-resto',c.restoSpent,c.restoPlanned,'data-resto','Budget ticket-resto','hors PAF',1)+'</div>'+
     vLink(m)+vPick(m)+
     adOpen('dep','Ajouter une dépense')+'<form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
