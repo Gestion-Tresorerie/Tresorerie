@@ -134,7 +134,7 @@ body::before{opacity:.4}
 .ib{width:40px;height:44px;border-radius:12px}
 .head{gap:6px}
 .monthnav h1{font-size:16px;min-width:112px}
-#status{cursor:pointer;flex:0 1 auto;min-width:0;max-width:36vw;overflow:hidden;text-overflow:ellipsis}
+#status{cursor:pointer;flex:0 0 auto;min-width:0;max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip{font-size:13px;padding:5px 11px}
 main{padding:18px 0 32px;gap:16px}
 .card,.kpi,.hrow{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);border:1px solid var(--card-line);box-shadow:none;border-radius:var(--r)}
@@ -231,7 +231,7 @@ input.num{font-size:16px;padding:11px 10px}
 }
 
 /* En-tête : logo | mois (centré, largeur fixe) | statut */
-.head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding:10px 16px}
+.head{display:grid;grid-template-columns:minmax(0,.7fr) auto minmax(0,1.3fr);align-items:center;gap:6px;padding:10px 16px}
 .head .brand{justify-self:center;align-self:center;line-height:0}
 .head .brand img{display:block;margin:0}
 .head .monthnav{justify-self:center;gap:0}
@@ -587,8 +587,8 @@ function initDb(){
 /* ---------- vues ---------- */
 function paintStatus(){var el=$('#status');if(!el)return;
   if(col){var s=STATUS[state.status]||STATUS.loading;el.className='chip '+s.cls;el.textContent=s.txt;return}
-  var t='Synchroniser',c='';
-  if(sy.busy){t='Synchro…'}else if(sy.err){t='Échec · réessayer';c=' bad'}else if(syncPending()){t='Synchroniser · '+syncCount();c=' warn'}else if(sy.ok&&syLast){t='Synchronisé '+new Date(syLast).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});c=' ok'}
+  var t='Synchro',c='';
+  if(sy.busy){t='Synchro…'}else if(sy.err){t='Échec ↻';c=' bad'}else if(syncPending()){t='Synchro · '+syncCount();c=' warn'}else if(sy.ok&&syLast){t='✓ '+new Date(syLast).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});c=' ok'}
   el.className='chip'+c;el.textContent=t;el.disabled=!!sy.busy}
 function bar(v,max,good){var p=max>0?Math.max(0,Math.min(100,v/max*100)):0;var k=good?(max>0&&v>=max-0.005?' ok':''):(v>max&&max>0?' over':'');return '<div class="bar'+k+'"><i style="width:'+p.toFixed(1)+'%"></i></div>'}
 function who(m){return state.config.contributors.concat(['Autre'])}
