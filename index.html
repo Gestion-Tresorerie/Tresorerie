@@ -1003,8 +1003,9 @@ function edSheet(e){
     sp='<div style="border-top:1px solid var(--line);margin:4px 0 10px;padding-top:10px"><b class="small">Répartir l’opération Fortuneo</b><p class="small muted" style="margin:4px 0 8px">Total '+fmt(e.tot||e.amount)+' · reste en '+esc(e.cat)+' : '+fmt(e.amount)+'. Rattache à un extra, une dépense 50/50 ou une charge fixe existants (crée-les d’abord) et saisis la somme (vide = montant de la ligne choisie).</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-xt" aria-label="Extra" style="flex:1.5;min-width:0"><option value="">Extra : aucun</option>'+(xf.length?'<optgroup label="Charges extra à payer">'+xf.map(function(y){return '<option value="f:'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</optgroup>':'')+(xo.length?'<optgroup label="Extras sur l’enveloppe">'+xo.map(function(y){return '<option value="e:'+y.id+'">'+esc(y.label)+' · '+fmt(y.amount)+'</option>'}).join('')+'</optgroup>':'')+'</select><input type="text" id="sp-xa" inputmode="decimal" placeholder="€" aria-label="Somme extra" style="flex:.7;min-width:0"></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-sh" aria-label="50/50" style="flex:1.5;min-width:0"><option value="">50/50 : aucune</option><option value="new">50/50 : nouvelle</option>'+opt(so,function(y){return y.v})+'</select><input type="text" id="sp-sa" inputmode="decimal" placeholder="€" aria-label="Somme 50/50" style="flex:.7;min-width:0"></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><span class="small muted" style="flex:1.5">Payeur si nouvelle 50/50</span><select id="sp-by" aria-label="Payeur" style="flex:.7;min-width:0"><option value="b">Compte joint</option><option value="h">'+esc(nsName('h'))+'</option><option value="l">'+esc(nsName('l'))+'</option></select></div>'+
     '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="sp-fx" aria-label="Charge fixe" style="flex:1.5;min-width:0"><option value="">Charge fixe : aucune</option>'+fl.map(function(y){return '<option value="'+y.id+'">'+esc(y.label)+' · '+fmt(y.planned)+'</option>'}).join('')+'</select><input type="text" id="sp-fa" inputmode="decimal" placeholder="€" aria-label="Somme charge fixe" style="flex:.7;min-width:0"></div>'+
-    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-ed="split">Répartir</button>'+(cl?'<button class="btn" data-lk="from" data-id="'+e.id+'">Relier un débit</button>':'')+'</div>'+(cl?'':'<p class="small muted" style="margin:8px 0 0">« Relier un débit » regroupe plusieurs achats saisis ou extras prévus sous ce débit : aucun à relier pour l’instant.</p>')+'</div>'}
+    (edErr?'<div class="note bad">'+esc(edErr)+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-ed="split">Répartir</button>'+((e.spl&&e.spl.length)?'<button class="btn" data-ed="unsplit">Défaire la répartition</button>':'')+(cl?'<button class="btn" data-lk="from" data-id="'+e.id+'">Relier un débit</button>':'')+'</div>'+(cl?'':'<p class="small muted" style="margin:8px 0 0">« Relier un débit » regroupe plusieurs achats saisis ou extras prévus sous ce débit : aucun à relier pour l’instant.</p>')+'</div>'}
   return '<div class="sheet" style="padding:12px;margin:2px 0 12px;border:1px solid var(--line);border-radius:14px">'+
     '<input type="text" id="ed-label" class="full" value="'+esc(e.label)+'" aria-label="Libellé" style="margin-bottom:8px">'+
     '<select id="ed-cat" class="full" aria-label="Catégorie" style="margin-bottom:8px">'+CATS.map(function(k){return '<option'+(k===e.cat?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+
@@ -1101,11 +1102,18 @@ document.addEventListener('click',function(e){
     xa=r2(xa);sa=r2(sa);fa=r2(fa);
     if(xa+sa+fa<0.005){edErr='Indique une cible et une somme.';render();return}
     if(xa+sa+fa>x0.amount+0.005){edErr='Somme trop élevée : il reste '+fmt(x0.amount)+' sur cette opération.';render();return}
-    if(!x0.tot)x0.tot=x0.amount;
-    if(xa&&xq){xq.bk=r2((xq.bk||0)+xa);if(xk==='f'){xq.paid=true;xq.actual=xa;xq.bank=true}}
-    if(sa){if(ss==='new')m0.shared.push({id:uid(),label:x0.label,v:sa,date:x0.date,by:'b',settled:false,from:x0.bankId});else{var q3=findBy(m0.shared,ss);if(q3)q3.bk=r2((q3.bk||0)+sa)}}
-    if(fa&&fq){fq.bk=r2((fq.bk||0)+fa);fq.paid=true;fq.actual=fa;fq.bank=true}
+    if(!x0.tot)x0.tot=x0.amount;x0.spl=x0.spl||[];
+    if(xa&&xq){x0.spl.push({k:xk==='f'?'f':'e',id:xq.id,a:xa,o:xk==='f'?[xq.planned,xq.actual,!!xq.paid,!!xq.bank]:0});xq.bk=r2((xq.bk||0)+xa);if(xk==='f'){xq.paid=true;xq.actual=xa;xq.bank=true}}
+    if(sa){if(ss==='new'){var nsh={id:uid(),label:x0.label,v:sa,date:x0.date,by:($('#sp-by')&&$('#sp-by').value)||'b',settled:false,from:x0.bankId};m0.shared.push(nsh);x0.spl.push({k:'sn',id:nsh.id,a:sa})}else{var q3=findBy(m0.shared,ss);if(q3){q3.bk=r2((q3.bk||0)+sa);x0.spl.push({k:'s',id:q3.id,a:sa})}}}
+    if(fa&&fq){x0.spl.push({k:'f',id:fq.id,a:fa,o:[fq.planned,fq.actual,!!fq.paid,!!fq.bank]});fq.bk=r2((fq.bk||0)+fa);fq.paid=true;fq.actual=fa;fq.bank=true}
     x0.amount=r2(x0.amount-xa-sa-fa);edErr='';ed.id=null;commitM()}
+  else if(a==='unsplit'){var mu=editM(ym),xu=findBy(mu.extras,ed.id);if(!xu||!(xu.spl&&xu.spl.length))return;var r3=function(v){return Math.round(v*100)/100},back=0;
+    xu.spl.forEach(function(r){back+=r.a;
+      if(r.k==='e'){var q=findBy(mu.extras,r.id);if(q)q.bk=Math.max(0,r3((q.bk||0)-r.a))}
+      else if(r.k==='f'){var f=findBy(mu.fixed,r.id);if(f){f.bk=Math.max(0,r3((f.bk||0)-r.a));f.paid=r.o?r.o[2]:false;f.bank=r.o?r.o[3]:false;f.actual=(r.o&&r.o[1]!=null)?r.o[1]:f.planned}}
+      else if(r.k==='s'){var sq=findBy(mu.shared,r.id);if(sq)sq.bk=Math.max(0,r3((sq.bk||0)-r.a))}
+      else if(r.k==='sn'){var sn=findBy(mu.shared,r.id);if(sn){mu.del=(mu.del||[]).concat([syKey(sn,'shared')]).slice(-300);mu.shared=mu.shared.filter(function(y){return y.id!==r.id})}}});
+    xu.amount=r3(xu.amount+back);if(xu.tot&&Math.abs(xu.amount-xu.tot)<0.005)delete xu.tot;delete xu.spl;edErr='';ed.id=null;commitM()}
   else if(a==='save'){var m=editM(ym),x=findBy(m.extras,ed.id);if(!x)return;
     var lb=String($('#ed-label').value||'').trim();if(lb)x.label=lb.slice(0,48);x.cat=$('#ed-cat').value||x.cat;
     if(!x.bankId){var am=num($('#ed-amount').value);if(am>0)x.amount=am;var dt=$('#ed-date').value;if(dt)x.date=dt}
@@ -1527,7 +1535,8 @@ function migModel(){
       m.fixed.push({id:uid(),tid:tp.id,label:tp.label,group:tp.group,planned:tp.amount,actual:tp.amount,paid:false});c2=true})}
     if(c2)touch('m-'+k)});
 }
-loadLocal();applySeed();applyModel();bankFix1();applyInc();migModel();try{nsSync()}catch(e){}
+function migCourses(){try{if(localStorage.getItem('budget-migc-v')==='1')return;Object.keys(state.months).forEach(function(k){var m=state.months[k],c=0;(m.extras||[]).forEach(function(e){if(e.bankId&&!e.grp&&(e.cat==='Autre'||!e.cat)){e.cat='Courses';c=1}});if(c)touch('m-'+k)});localStorage.setItem('budget-migc-v','1')}catch(e){}}
+loadLocal();applySeed();applyModel();bankFix1();migCourses();applyInc();migModel();try{nsSync()}catch(e){}
 (function(){var m=/#bank=(\w+)/.exec(location.hash||'');if(m){state.tab='banque';bank.msg=m[1]==='ok'?'':'La connexion à Fortuneo a échoué. Réessaie.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}})();
 render();
 if(bank.token){bankLoad();setTimeout(function(){doSync(true)},1500);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&Date.now()-syLast>10000&&!sy.busy)doSync(true)});setInterval(function(){if(document.visibilityState==='visible'&&!sy.busy&&!typing()&&Date.now()-syLast>45000)doSync(true)},30000)}
