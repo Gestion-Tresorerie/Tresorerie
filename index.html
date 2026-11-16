@@ -630,7 +630,7 @@ function vTodo(m,c){
 var synLast=0;
 function stCol(k){return k==='g'?'var(--good)':(k==='o'?'var(--warn)':'var(--bad)')}
 function ringSvg(p,k){var R=29,L=2*Math.PI*R,pp=Math.max(0,Math.min(100,p));return '<svg class="ring" viewBox="0 0 70 70" width="72" height="72" aria-hidden="true"><circle class="rt" cx="35" cy="35" r="29" fill="none" stroke-width="7"/><circle class="rp" cx="35" cy="35" r="29" fill="none" style="stroke:'+stCol(k)+';color:'+stCol(k)+';--L:'+L.toFixed(1)+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+L.toFixed(1)+'" stroke-dashoffset="'+(L*(1-pp/100)).toFixed(1)+'" transform="rotate(-90 35 35)"/></svg>'}
-function ringTile(label,p,k,tab,val,tot,sub){var nf=function(v){return num(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})};return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf(val)+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div><div class="rs">'+(sub||'sur')+' '+fmt(tot)+'</div></div>'}
+function ringTile(label,p,k,tab,val,tot,sub,vcol,rst){var nf=function(v){return num(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})};return '<div class="rtile tap" role="button" data-act="tab" data-tab="'+tab+'"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv"'+(vcol?' style="color:'+vcol+'"':'')+'>'+nf(val)+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div><div class="rs">'+(rst!=null?rst:(sub||'sur')+' '+fmt(tot))+'</div></div>'}
 function balNow(){
   var b=!col&&bank.bal;if(!b)return null;
   var T=String(b.type||'').toUpperCase(),avail=/^(ITAV|CLAV|XPCD)$/.test(T);
@@ -712,9 +712,13 @@ function vSynth(m,c){
   var mini=function(l,v,k){return '<div class="mini"><span>'+l+'</span><span class="n '+(k||'')+'">'+v+'</span></div>'};
   var cp=c.coursesPlanned>0?c.coursesSpent/c.coursesPlanned*100:0,ck=cp>100?'r':(cp>=80?'o':'g');
   var unpK=m.fixed.filter(function(x){return !isX(x)&&!x.paid}).length,unpX=m.fixed.filter(function(x){return isX(x)&&!x.paid}).length,nK=m.fixed.filter(function(x){return !isX(x)}).length,nX=m.fixed.length-nK;
-  var fp=c.kPlanned>0?c.kPaid/c.kPlanned*100:0,fk=unpK?'o':'g';
+  var fp=c.kPlanned>0?c.kPaid/c.kPlanned*100:0,d0=new Date(),nowYm=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0'),
+    KK=m.fixed.filter(function(x){return !isX(x)}),allPaid=KK.length>0&&unpK===0,
+    gapK=Math.round(sum(KK.filter(function(x){return x.paid}),function(x){return x.planned-x.actual})*100)/100,
+    fk=allPaid?'g':((ym<nowYm||(ym===nowYm&&d0.getDate()>12))?'r':'o'),
+    fvc=gapK<-0.5?'var(--bad)':((allPaid&&gapK>0.5)?'var(--good)':'');
   var rp=c.restoPlanned>0?c.restoSpent/c.restoPlanned*100:(c.restoSpent>0?101:0),rk=rp>100?'r':(rp>=80?'o':'g');
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.kPaid,c.kPlanned)+'</div>';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',gapK,c.kPlanned,'',fvc,fmt(c.kPaid)+' payé')+'</div>';
   return ''+
   fgTile()+
   rings+
