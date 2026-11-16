@@ -718,7 +718,7 @@ function vSynth(m,c){
     fk=allPaid?'g':((ym<nowYm||(ym===nowYm&&d0.getDate()>12))?'r':'o'),
     fvc=gapK<-0.5?'var(--bad)':((allPaid&&gapK>0.5)?'var(--good)':'');
   var rp=c.restoPlanned>0?c.restoSpent/c.restoPlanned*100:(c.restoSpent>0?101:0),rk=rp>100?'r':(rp>=80?'o':'g');
-  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.fixedRemain,c.fixedProj,'sur','','<span style="color:'+(gapK<-0.5?'var(--bad)':((allPaid&&gapK>0.5)?'var(--good)':'inherit'))+'">écart '+(Math.abs(gapK)<0.005?'0,00':sgn(gapK))+'</span>','reste')+'</div>';
+  var rings='<div class="rings">'+ringTile('Courses',cp,ck,'depenses',c.coursesPlanned-c.coursesSpent,c.coursesPlanned)+ringTile('Ticket-resto',rp,rk,'depenses',c.restoPlanned-c.restoSpent,c.restoPlanned)+ringTile('Charges',fp,fk,'fixes',c.fixedRemain,c.fixedProj,'sur','','<span style="color:'+(gapK<-0.5?'var(--bad)':((allPaid&&gapK>0.5)?'var(--good)':'inherit'))+'">sur '+fmt(c.fixedProj)+'</span>','reste')+'</div>';
   return ''+
   fgTile()+
   rings+
