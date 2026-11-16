@@ -949,11 +949,11 @@ function vDep(m,c){
     return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+((e.tot||e.from||e.bk)?'<span class="tag tb">'+(e.tot?'réparti · Fortuneo '+fmt(e.tot):(e.from?'issu d’une opération Fortuneo':'relié Fortuneo '+fmt(e.bk)))+'</span>':'')+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
       '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
-  var envT=function(label,sp,pl,attr,aria,hint,rem){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(rem?pl-sp:sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    return '<div class="rtile envt"><div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div>'+
+  var envT=function(label,sp,pl,attr,aria,hint,rem,stamp){var p=pl>0?sp/pl*100:(sp>0?101:0),k=p>100?'r':(p>=80?'o':'g'),over=sp>pl+0.005,nf=num(rem?pl-sp:sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return '<div class="rtile envt" style="position:relative">'+(stamp?'<div style="position:absolute;top:7px;right:9px;font:500 9.5px var(--mono);color:var(--muted);opacity:.85;line-height:1">'+stamp+'</div>':'')+'<div class="rwrap">'+ringSvg(p,k)+'<div class="rv">'+nf+'</div></div><div class="rl"><span class="dot '+k+'"></span>'+esc(label)+'</div>'+
       '<label class="rs envin"><span>sur</span><input class="num" inputmode="decimal" '+attr+'="1" value="'+inp(pl)+'" aria-label="'+aria+'"><span>€</span></label>'+
       (rem&&!over?'':'<div class="rs '+(over?'neg':'')+'">'+(over?'Dépassement '+fmt(sp-pl):'Reste '+fmt(pl-sp))+'</div>')+(hint?'<div class="rs">'+hint+'</div>':'')+'</div>'};
-  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','',1)+envT('Ticket-resto',c.restoSpent,c.restoPlanned,'data-resto','Budget ticket-resto','hors PAF',1)+'</div>'+
+  return '<div class="rings two">'+envT('Courses',c.coursesSpent,c.coursesPlanned,'data-courses','Enveloppe courses','',1)+envT('Ticket-resto',c.restoSpent,c.restoPlanned,'data-resto','Budget ticket-resto','hors PAF',1,upStamp())+'</div>'+
     vLink(m)+vPick(m)+
     adOpen('dep','Ajouter une dépense')+'<form class="form" data-form="add-extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Auchan)" required class="full" aria-label="Libellé">'+
@@ -1027,6 +1027,7 @@ function upImport(){
     if(man)man.upId=t.uid;else m.extras.push({id:uid(),label:String(t.label).slice(0,48),cat:RESTO,amount:amt,date:t.date,upId:t.uid});
     m.bankSeen['u'+t.uid]=1});
   touch('m-'+key);return true}
+function upStamp(){if(!upd||!upd.ts)return '';var d=new Date(upd.ts),z=function(n){return (n<10?'0':'')+n};return z(d.getDate())+'/'+z(d.getMonth()+1)+' '+z(d.getHours())+':'+z(d.getMinutes())}
 function upLoad(){if(!bank.token)return;bankCall('/up').then(function(x){if(x.ok&&x.d&&x.d.ts){upd=x.d;try{upImport()}catch(e){}render()}}).catch(function(){})}
 var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false,sum:null};
 try{bank.token=localStorage.getItem('budget-bank-token')||null;bank.bal=JSON.parse(localStorage.getItem('budget-bank-bal')||'null')}catch(e){}
