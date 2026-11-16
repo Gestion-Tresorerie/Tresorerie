@@ -720,8 +720,6 @@ function vSynth(m,c){
   fgTile()+
   rings+
   vTodo(m,c)+vAdv()+vSharedSyn()+
-  '<section class="card tap" role="button" data-act="tab" data-tab="depenses"><h2>Dépenses · courses du mois</h2><div class="big '+(c.coursesSpent>c.coursesPlanned?'neg':'')+'" style="font-size:28px">'+fmt(c.coursesSpent)+' <span class="muted" style="font-size:16px">/ '+fmt(c.coursesPlanned)+'</span></div><div class="small '+(c.coursesSpent>c.coursesPlanned?'neg':'muted')+'" style="margin-top:6px">'+(c.coursesSpent>c.coursesPlanned?'Dépassement de '+fmt(c.coursesSpent-c.coursesPlanned):'Reste '+fmt(c.coursesPlanned-c.coursesSpent))+'</div>'+
-    '<div class="line" style="margin-top:10px;padding-bottom:0"><span class="small muted">Autres dépenses · hors courses</span><span class="n"><b>'+fmt(c.otherExtras)+'</b></span></div></section>'+
   paf+
   '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges fixes</h2>'+
     '<div class="line" style="border:0"><span class="small muted">'+(nK-unpK)+' / '+nK+' lignes</span><span class="n small">'+fmt(c.kPaid)+' / '+fmt(c.kPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>'+
