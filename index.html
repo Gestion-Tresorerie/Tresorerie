@@ -1004,7 +1004,7 @@ function vModel(){
 var BANK_API='https://budget-bank.hasina-rasolo.workers.dev';
 var upd=null;
 function upAge(){if(!upd||!upd.ts)return null;return (Date.now()-upd.ts)/36e5}
-function upLine(){var h=upAge();if(h==null||upd.balance==null)return null;var old=h>72,ago=h<1?'à l’instant':(h<24?'il y a '+Math.round(h)+' h':'il y a '+Math.round(h/24)+' j');return '<span'+(old?' style="color:var(--bad)"':'')+'>Solde Up '+fmt(upd.balance)+' · '+ago+'</span>'}
+function upLine(){var h=upAge();if(h==null||upd.balance==null)return null;var old=h>72,ago=h<1?'à l’instant':(h<24?'il y a '+Math.round(h)+' h':'il y a '+Math.round(h/24)+' j');return '<span'+(old?' style="color:var(--bad)"':'')+'>Solde disponible '+fmt(upd.balance)+' · '+ago+'</span>'}
 function upMonthOf(d){var k=d.slice(0,7);return +d.slice(8,10)>=25?shiftYm(k,1):k}
 function upImport(){
   if(!upd||!upd.tx||!upd.tx.length)return false;
