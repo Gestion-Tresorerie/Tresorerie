@@ -1431,16 +1431,19 @@ function syPlan(rem){
     items=syDiff(l,r.data,dir,lt>=rt);
     if(items.length)plan.push({id:id,dir:dir,items:items})});
   return plan}
-function syPreview(plan,ok,cancel){
+function syPreview(plan,ok,cancel,discard){
   var old=document.getElementById('syov');if(old)old.remove();
   var ov=document.createElement('div');ov.id='syov';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
   var nI=plan.reduce(function(n,q){return n+q.items.length},0),body=plan.map(function(q,i){
     var t=q.id==='config'?'Réglages':(q.id==='perso'?'Perso (privé)':ymLabel(q.id.slice(2))),dl={push:'Envoi',pull:'Réception',merge:'Fusion'}[q.dir]+(q.isNew?' · nouveau':'');
     return '<div style="border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px"><label style="display:flex;align-items:center;gap:10px;font-weight:600"><input type="checkbox" data-sy="'+i+'" checked style="width:18px;height:18px"><span style="flex:1">'+esc(t)+'</span><span class="small muted" style="font-weight:400">'+dl+'</span></label>'+
       (q.isNew&&q.items.length>6?'<div class="small muted" style="margin-top:6px">Premier envoi complet : '+q.items.length+' éléments</div>':q.items.length?q.items.slice(0,30).map(function(it){return '<div class="small" style="margin-top:6px;display:flex;gap:8px"><span style="flex:0 0 auto;font-family:var(--mono);color:'+(it[0]==='+'?'var(--good)':(it[0]==='−'?'var(--bad)':'var(--warn)'))+'">'+it[0]+it[1]+'</span><span>'+it[2]+'</span></div>'}).join('')+(q.items.length>30?'<div class="small muted" style="margin-top:6px">… et '+(q.items.length-30)+' autres</div>':''):'<div class="small muted" style="margin-top:6px">Aucune ligne modifiée</div>')+'</div>'}).join('');
-  ov.innerHTML='<div style="background:var(--page);color:var(--ink);width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 16px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.4)"><h2 style="margin:0 0 4px">À synchroniser</h2><p class="small muted" style="margin:0 0 12px">'+nI+' modification'+(nI>1?'s':'')+' · → envoyé à l’autre téléphone · ← reçu. Décoche ce que tu ne veux pas synchroniser.</p>'+body+'<div style="display:flex;gap:8px;position:sticky;bottom:-22px;margin:0 -16px -22px;padding:10px 16px 22px;background:var(--page)"><button class="btn" data-sy-c="1" style="flex:1">Annuler</button><button class="btn primary" data-sy-ok="1" style="flex:2">Confirmer</button></div></div>';
+  ov.innerHTML='<div style="background:var(--page);color:var(--ink);width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 16px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.4)"><h2 style="margin:0 0 4px">À synchroniser</h2><p class="small muted" style="margin:0 0 12px">'+nI+' modification'+(nI>1?'s':'')+' · → envoyé à l’autre téléphone · ← reçu. Décoche ce que tu ne veux pas synchroniser.</p>'+body+(plan.some(function(q){return q.dir!=='pull'&&!(q.id==='perso'&&q.isNew)})?'<button class="btn" data-sy-d="1" style="width:100%;margin:0 0 12px;color:var(--bad);border-color:var(--bad)">Annuler mes modifications cochées</button><p class="small muted" style="margin:-6px 0 12px">Supprime ici les changements non envoyés des lignes cochées et revient à la version du serveur.</p>':'')+'<div style="display:flex;gap:8px;position:sticky;bottom:-22px;margin:0 -16px -22px;padding:10px 16px 22px;background:var(--page)"><button class="btn" data-sy-c="1" style="flex:1">Fermer</button><button class="btn primary" data-sy-ok="1" style="flex:2">Confirmer</button></div></div>';
   ov.addEventListener('click',function(ev){var t=ev.target;
     if(t.closest('[data-sy-c]')||t===ov){ov.remove();cancel()}
+    else if(t.closest('[data-sy-d]')){var sel=[];Array.prototype.forEach.call(ov.querySelectorAll('input[data-sy]'),function(c){var q=plan[+c.dataset.sy];if(c.checked&&q.dir!=='pull'&&!(q.id==='perso'&&q.isNew))sel.push(q.id)});
+      if(!sel.length){alert('Coche au moins une ligne avec des modifications à annuler.');return}
+      if(!confirm('Annuler définitivement les modifications non envoyées de '+sel.length+' élément'+(sel.length>1?'s':'')+' ? Elles seront perdues sur cet appareil.'))return;ov.remove();discard(sel)}
     else if(t.closest('[data-sy-ok]')){var skip={};Array.prototype.forEach.call(ov.querySelectorAll('input[data-sy]'),function(c){if(!c.checked)skip[plan[+c.dataset.sy].id]=1});ov.remove();ok(skip)}});
   document.body.appendChild(ov)}
 function doSync(silent){
@@ -1455,7 +1458,10 @@ function doSync(silent){
       if(pm&&(pm.items.length||pm.isNew))plan.push({id:'perso',dir:pm.dir,isNew:pm.isNew,items:pm.items});
       var run=function(skip){return syApply(rem,silent,skip).then(function(){return (pm&&!(skip&&skip.perso))?peApply(pm):null}).then(function(){syLast=Date.now();sy.ok=true;sy.busy=false;render()}).catch(syFail)};
       if(!plan.length||silent)return run(null);
-      syPreview(plan,function(skip){run(skip)},function(){sy.busy=false;paintStatus()})})
+      syPreview(plan,function(skip){run(skip)},function(){sy.busy=false;paintStatus()},function(sel){var meta=syMeta();sel.forEach(function(id){
+        if(id==='perso'){if(rp&&rp.data){pe.doc=peFix({ts:rp.ts||0,data:clone(rp.data)});peStore();peMetaSet(pe.doc.ts,pe.doc.data)}return}
+        var r=rem[id];if(r){syAdopt(id,r.data);meta[id]=r.ts||0}else if(id!=='config'){delete state.months[id.slice(2)];delete meta[id]}});
+      try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();sy.busy=false;sy.ok=true;render()})})
   }).catch(syFail);
 }
 var apAt=0;
