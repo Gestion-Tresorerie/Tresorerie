@@ -686,7 +686,7 @@ function fgTile(){
     '<button type="button" data-act="refresh"'+(bank.busy||!linked||(st&&st.expired)?' disabled':'')+' style="flex:0 0 auto;height:34px;padding:0 14px;font:inherit;font-size:13px;color:#fff;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25);border-radius:99px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)">'+(bank.busy?'…':'Actualiser')+'</button></div>';
   if(!b){return h+'<div style="position:relative;margin-top:18px;font-size:15px;font-weight:600">—</div><div style="position:relative;font-size:12px;color:rgba(255,255,255,.8);margin-top:4px">'+(!bank.token?'Connexion Fortuneo requise':(bank.balInfo==='old'?'Worker pas à jour : à redéployer':(bank.balInfo?'Solde non fourni par Fortuneo ('+esc(bank.balInfo)+')':'Actualise dans l’onglet Banque')))+'</div></section>'}
   h+='<div style="position:relative;margin-top:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px"><div><div style="font-size:11.5px;color:rgba(255,255,255,.85);letter-spacing:.07em;text-transform:uppercase">Solde disponible</div>'+
-    '<div style="font-family:var(--mono);font-size:36px;font-weight:600;letter-spacing:-.03em;line-height:1.1'+(uneg?';color:#ff6b6b':'')+'">'+esc(big)+'<span style="font-size:21px;color:'+(uneg?'rgba(255,107,107,.8)':'rgba(255,255,255,.8)')+'">'+esc(dec)+'</span></div>'+(b.amount<0?'<div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px">Solde réel '+esc(sgn(b.amount))+' · découvert 200 €</div>':'')+'</div>'+
+    '<div style="font-family:var(--mono);font-size:36px;font-weight:600;letter-spacing:-.03em;line-height:1.1;color:'+(b.amount<0?'#ff6b6b':'#6ee7b7')+'">'+esc(big)+'<span style="font-size:21px;color:'+(b.amount<0?'rgba(255,107,107,.8)':'rgba(110,231,183,.8)')+'">'+esc(dec)+'</span></div>'+(b.amount<0?'<div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px">Solde réel '+esc(sgn(b.amount))+' · découvert 200 €</div>':'')+'</div>'+
     (false?'<div style="text-align:right;padding-bottom:6px"><div style="display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:#fff;padding:4px 10px;border-radius:99px;background:'+(w7<0?'linear-gradient(135deg,rgba(255,107,107,.92),rgba(224,36,94,.92))':'linear-gradient(135deg,rgba(16,185,129,.92),rgba(5,150,105,.92))')+'">'+(w7<0?'▼ ':'▲ ')+esc(fmt(Math.abs(w7)))+'</div><div style="font-size:11px;color:rgba(255,255,255,.74);margin-top:4px">sur 7 jours</div></div>':'')+'</div>';
   if(b.n)h+='<div style="position:relative;margin-top:8px;font-size:12px;color:#fde68a">dont '+esc(sgn(b.pend))+' en attente ('+b.n+' op.) · avant attente '+esc(fmt(b.booked))+'</div>';
   if(false){
@@ -721,9 +721,7 @@ function vSynth(m,c){
   rings+
   vTodo(m,c)+vAdv()+vSharedSyn()+
   paf+
-  '<section class="card tap" role="button" data-act="tab" data-tab="fixes"><h2>Charges fixes</h2>'+
-    '<div class="line" style="border:0"><span class="small muted">'+(nK-unpK)+' / '+nK+' lignes</span><span class="n small">'+fmt(c.kPaid)+' / '+fmt(c.kPlanned)+'</span></div>'+(gaps?'<div class="small muted" style="margin-top:8px">Écarts vs prévu</div>'+gaps:'')+'</section>'+
-  (nX?'<section class="card tap" role="button" data-act="tab" data-tab="extra"><h2>Charges extra</h2><div class="line" style="border:0"><span class="small muted">'+(nX-unpX)+' / '+nX+' lignes</span><span class="n small">'+fmt(c.xPaid)+' / '+fmt(c.xPlanned)+'</span></div></section>':'');
+  '';
 }
 
 function vRev(m,c){
