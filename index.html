@@ -1287,10 +1287,16 @@ var BK_FIX=[['tel-enfant',/TELEPHONE|TEL RAF|RAFAELLE.*BOUYGUES|BOUYGUES.*RAFAEL
 var BK_CAT=[['Courses',/SODISCA|AUCHAN|LIDL|CARREFOUR|SUPER U|MONOPRIX|ALDI|INTERMARCHE|GRAND FRAIS|CASINO|BOULANGERIE|MARCHE|COURSES|PARIS STORE|FRANPRIX|BIOCOOP|SOLIBE/],['Santé',/PHARM|DOCTEUR|\bDR\b|ORTHO|CLINIQUE|OPHTAL|DOCTOLIB|RADIO|NOVEOC|CPAM|MEDECIN|LABORATOIRE/],['Transport',/\bTAM\b|VOIRIE|STATIONNEMENT|PARK|PEAGE|CARBURANT|STATION|SNCF|UBER/],['Enfants & école',/ECOLE|COLLEGE|PHOTO|SCOLAIRE/],['Loisirs',/RESTAU|CINE|AMIKADO|NETFLIX|SPOTIFY|BETM|ACTION|FNAC|AMAZON|KAYAK|CHINA|WOK|PIZZ|KEBAB|BURGER|MCDO|SUSHI|TACOS|PRIMARK|KIABI|DECATHLON/]];
 var BK_PART={loyer:1},BK_BACK={};
 var BK_MONTHS={JANV:1,JANVIER:1,FEV:2,FEVR:2,FEVRIER:2,MARS:3,AVR:4,AVRIL:4,MAI:5,JUIN:6,JUIL:7,JUILLET:7,AOUT:8,SEPT:9,SEPTEMBRE:9,OCT:10,OCTT:10,OCTOBRE:10,NOV:11,NOVEMBRE:11,DEC:12,DECEMBRE:12};
+var _pafC={src:null,n:-1,l:[]};
+function bkPafStart(nm){
+  var tx=bank.tx||[];if(_pafC.src!==tx||_pafC.n!==tx.length){_pafC={src:tx,n:tx.length,l:tx.filter(function(t){return t.amount>0&&t.date&&/\bPAF\b|PARTICIP/.test(bkNorm(t.label))}).map(function(t){return String(t.date).slice(0,10)}).sort()}}
+  var pm=shiftYm(nm,-1);return _pafC.l.filter(function(d){return d>=pm+'-25'&&d<=nm+'-24'})[0]||null}
 function bkMonthKey(t){
   var d=t.date||'',base=d.slice(0,7);if(!/^\d{4}-\d{2}$/.test(base))return null;
   var L=bkNorm(t.label),m=/\b(JANV(?:IER)?|FEV(?:R(?:IER)?)?|MARS|AVR(?:IL)?|MAI|JUIN|JUIL(?:LET)?|AOUT|SEPT(?:EMBRE)?|OCT(?:T|OBRE)?|NOV(?:EMBRE)?|DEC(?:EMBRE)?)\b/.exec(L);
-  if(!m){if(t.amount>0&&/\bPAF\b/.test(L)&&+d.slice(8,10)>=25)return shiftYm(base,1);return base}
+  if(!m){if(t.amount>0&&/\bPAF\b/.test(L)&&+d.slice(8,10)>=25)return shiftYm(base,1);
+    if(+d.slice(8,10)>=20&&!(t.amount<0&&bkClassify(t).k==='fixed')){var nx=bkPafStart(shiftYm(base,1));if(nx&&d.slice(0,10)>=nx)return shiftYm(base,1)}
+    return base}
   var mo=BK_MONTHS[m[1]],by=+base.slice(0,4),bm=+base.slice(5,7),y=by;
   if(mo<bm-6)y=by+1;else if(mo>bm+6)y=by-1;
   var diff=(y*12+mo)-(by*12+bm);
@@ -1309,6 +1315,14 @@ function bkClassify(t){
 function bankSync(){
   var s={ticked:0,pafs:0,credits:0,extras:0},touched={};
   var list=(bank.tx||[]).filter(function(t){return !t.pending&&t.id&&t.amount}).sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)});
+  list.forEach(function(t){
+    var key0=bkMonthKey(t);if(key0&&t.amount<0)Object.keys(state.months).forEach(function(k){
+      if(k===key0||(state.months[key0]&&state.months[key0].imported))return;
+      var om=state.months[k];if(!om||om.imported||!om.extras)return;
+      var e=om.extras.filter(function(y){return y.bankId===t.id})[0];if(!e)return;
+      var a=editM(k);a.extras=a.extras.filter(function(y){return y!==e&&y.bankId!==t.id});touch('m-'+k);
+      var b=editM(key0);b.bankSeen=b.bankSeen||{};b.bankSeen[t.id]=1;b.extras.push(e);touch('m-'+key0);touched[key0]=1;touched[k]=1});
+  });
   list.forEach(function(t){
     var key=bkMonthKey(t);if(!key)return;
     var ex=state.months[key];
