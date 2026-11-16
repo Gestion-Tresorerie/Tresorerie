@@ -1320,8 +1320,8 @@ function bankSync(){
       if(k===key0||(state.months[key0]&&state.months[key0].imported))return;
       var om=state.months[k];if(!om||om.imported||!om.extras)return;
       var e=om.extras.filter(function(y){return y.bankId===t.id})[0];if(!e)return;
-      var a=editM(k);a.extras=a.extras.filter(function(y){return y!==e&&y.bankId!==t.id});touch('m-'+k);
-      var b=editM(key0);b.bankSeen=b.bankSeen||{};b.bankSeen[t.id]=1;b.extras.push(e);touch('m-'+key0);touched[key0]=1;touched[k]=1});
+      var a=editM(k);a.extras=a.extras.filter(function(y){return y!==e&&y.bankId!==t.id});a.del=(a.del||[]).concat(['b'+t.id]).slice(-300);touch('m-'+k);
+      var b=editM(key0);b.bankSeen=b.bankSeen||{};b.bankSeen[t.id]=1;b.del=(b.del||[]).filter(function(q){return q!=='b'+t.id});if(!b.extras.some(function(y){return y.bankId===t.id}))b.extras.push(e);touch('m-'+key0);touched[key0]=1;touched[k]=1});
   });
   list.forEach(function(t){
     var key=bkMonthKey(t);if(!key)return;
