@@ -1034,7 +1034,7 @@ function bankCall(path,opts){
 function bankFail(e){bank.busy=false;bank.msg='Passerelle injoignable. Vérifie ta connexion.';render()}
 function bankLoad(){
   if(!bank.token)return;bank.busy=true;render();
-  bankCall('/status').then(function(x){bank.busy=false;if(x.ok){bank.st=x.d;bank.msg=''}else bank.msg='Session expirée : reconnecte-toi.';render();if(x.ok)upLoad();if(x.ok&&x.d.linked&&!x.d.expired)bankTx(false)}).catch(bankFail);
+  bankCall('/status').then(function(x){bank.busy=false;if(x.ok){bank.st=x.d;bank.msg=''}else bank.msg='Session expirée : reconnecte-toi.';render();if(x.ok){upLoad();autoPull()}if(x.ok&&x.d.linked&&!x.d.expired)bankTx(false)}).catch(bankFail);
 }
 function bankTx(force){
   var oldF=bank.fetched,oldIds={};(bank.tx||[]).forEach(function(t){oldIds[t.id]=1});
@@ -1452,6 +1452,25 @@ function doSync(silent){
       syPreview(plan,function(skip){run(skip)},function(){sy.busy=false;paintStatus()})})
   }).catch(syFail);
 }
+var apAt=0;
+function autoPull(){
+  if(sy.busy||col||!bank.token||Date.now()-apAt<30000)return;apAt=Date.now();
+  bankCall('/sync').then(function(x){
+    if(!x.ok||sy.busy)return;
+    var rem=x.d.docs||{},meta=syMeta(),n=0;
+    Object.keys(rem).forEach(function(id){
+      var r=rem[id],l=docFor(id),rt=r.ts||0,lt=l?(l._ts||0):-1,m0=meta[id]||0;
+      if(!l){syAdopt(id,r.data);meta[id]=rt;n++;return}
+      if(rt===lt){meta[id]=rt;return}
+      if(rt>lt&&lt<=m0){syAdopt(id,r.data);meta[id]=rt;n++}});
+    if(n){try{localStorage.setItem(SYM,JSON.stringify(meta))}catch(e){}persistLocal();resetVirt();if(typing())paintStatus();else render()}
+    if(!pe.key)return;
+    return peCall('/perso/doc').then(function(y){
+      if(!y.ok||sy.busy)return;var rp=y.d.doc||null;if(!rp)return;
+      var pm=pePlan(rp);
+      if(pm&&pm.dir==='pull'&&!pm.hasSent)return peApply(pm).then(function(){if(typing())paintStatus();else render()})})
+  }).catch(function(){})}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')autoPull()});
 function syApply(rem,silent,skip){
     var meta=syMeta(),push={},ids={};
     syIds().concat(Object.keys(rem)).forEach(function(id){ids[id]=1});
