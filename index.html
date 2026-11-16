@@ -902,6 +902,7 @@ function vFix(m,c,xt){
   var P0=xt?c.xPlanned:c.kPlanned,P1=xt?c.xPaid:c.kPaid,P2=xt?c.xRemain:c.kRemain,pool=m.fixed.filter(function(x){return xt?isX(x):!isX(x)});
   var html=groups.map(function(g){
     var items=pool.filter(function(x){return xt||x.group===g}); if(!items.length)return '';
+    if(!xt){var od={};state.config.fixed.forEach(function(q,i){od[q.id]=i});items=items.map(function(x,i){return [x,x.tid in od?od[x.tid]:1e6+i]}).sort(function(a,b){return a[1]-b[1]}).map(function(a){return a[0]})}
     var tp=sum(items.filter(function(x){return !x.off}),function(x){return x.planned});
     return '<section class="card"><div class="grp"><b>'+esc(g)+' <span class="gc">'+items.filter(function(x){return x.paid&&!x.off}).length+'/'+items.filter(function(x){return !x.off}).length+'</span></b><span class="n">'+fmt(tp)+'</span></div>'+
       items.map(function(x){
@@ -972,8 +973,9 @@ function vModel(){
   var foyer='<section class="card"><h2>Foyer</h2><div class="grid2">'+cfg.contributors.slice(0,2).map(function(n,i){return '<div><label class="small muted">Prénom<input type="text" data-contrib="'+i+'" value="'+esc(n)+'" style="margin-top:4px"></label><label class="small muted" style="display:block;margin-top:10px">Revenu net / mois<input class="num" inputmode="decimal" data-income="'+i+'" value="'+inp(cfg.incomes[i]||0)+'" style="margin-top:4px"></label></div>'}).join('')+'</div>'+
     '<label class="small muted" style="display:block;margin-top:12px">Salaire de '+esc(cfg.contributors[0])+' perçu le 1er du mois (le reste le 10)<input class="num" inputmode="decimal" data-salfirst="1" value="'+inp(cfg.salaryFirst)+'" style="margin-top:4px"></label></section>';
   var rowFx=function(t){
+    var gid=cfg.fixed.filter(function(y){return y.group===t.group}).map(function(y){return y.id}),gp=gid.indexOf(t.id);
     var note=t.from&&t.months?t.months+' mois · jusqu’à '+ymLabel(tplEnd(t)):(t.from?'depuis '+ymLabel(t.from)+' · sans fin':'');
-    return '<div class="mrow tap" role="button" data-md="open" data-id="'+t.id+'"><span class="t"><span class="nm">'+esc(t.label)+'</span>'+(note?'<span class="tags"><span class="tag tb">'+esc(note)+'</span></span>':'')+'</span><span class="n">'+fmt(t.amount)+'</span></div>'+
+    return '<div class="mrow tap" role="button" data-md="open" data-id="'+t.id+'"><span class="t"><span class="nm">'+esc(t.label)+'</span>'+(note?'<span class="tags"><span class="tag tb">'+esc(note)+'</span></span>':'')+'</span><span style="display:flex;align-items:center;gap:6px"><span class="n">'+fmt(t.amount)+'</span><button class="btn mini" data-md="mv" data-d="-1" data-id="'+t.id+'" aria-label="Monter"'+(gp<=0?' disabled style="opacity:.3"':'')+'>▲</button><button class="btn mini" data-md="mv" data-d="1" data-id="'+t.id+'" aria-label="Descendre"'+(gp>=gid.length-1?' disabled style="opacity:.3"':'')+'>▼</button></span></div>'+
     (cf.id===t.id?'<div class="edsh"><input type="text" data-cfg="fixed" data-id="'+t.id+'" data-f="label" value="'+esc(t.label)+'" aria-label="Libellé"><div class="grid2"><select data-cfg="fixed" data-id="'+t.id+'" data-f="group" aria-label="Groupe">'+gopts(t.group)+'</select><input class="num" inputmode="decimal" data-cfg="fixed" data-id="'+t.id+'" data-f="amount" data-n="1" value="'+inp(t.amount)+'" aria-label="Montant"></div>'+
       '<div class="edbt"><button class="btn mini" data-md="open" data-id="'+t.id+'">Fermer</button><button class="btn mini neg" data-act="cfgdel" data-list="fixed" data-id="'+t.id+'">Supprimer</button></div></div>':'');
   };
@@ -1690,6 +1692,7 @@ document.addEventListener('change',function(e){
 
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-md]');if(!t)return;
+  if(t.dataset.md==='mv'){e.stopPropagation();var L=state.config.fixed,i0=L.findIndex(function(y){return y.id===t.dataset.id});if(i0<0)return;var dd=+t.dataset.d,j0=i0+dd;while(j0>=0&&j0<L.length&&L[j0].group!==L[i0].group)j0+=dd;if(j0<0||j0>=L.length)return;var tmp=L[i0];L[i0]=L[j0];L[j0]=tmp;commitCfg();return}
   if(t.dataset.md==='open'){cf.id=(cf.id===t.dataset.id)?null:t.dataset.id;render()}
   else if(t.dataset.md==='tog'){md[t.dataset.k]=!md[t.dataset.k];render()}
 });
