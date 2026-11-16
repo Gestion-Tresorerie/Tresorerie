@@ -1005,7 +1005,29 @@ var BANK_API='https://budget-bank.hasina-rasolo.workers.dev';
 var upd=null;
 function upAge(){if(!upd||!upd.ts)return null;return (Date.now()-upd.ts)/36e5}
 function upLine(){var h=upAge();if(h==null||upd.balance==null)return null;var old=h>72,ago=h<1?'à l’instant':(h<24?'il y a '+Math.round(h)+' h':'il y a '+Math.round(h/24)+' j');return '<span'+(old?' style="color:var(--bad)"':'')+'>Solde Up '+fmt(upd.balance)+' · '+ago+'</span>'}
-function upLoad(){if(!bank.token)return;bankCall('/up').then(function(x){if(x.ok&&x.d&&x.d.ts){upd=x.d;render()}}).catch(function(){})}
+function upMonthOf(d){var k=d.slice(0,7);return +d.slice(8,10)>=25?shiftYm(k,1):k}
+function upImport(){
+  if(!upd||!upd.tx||!upd.tx.length)return false;
+  var L=upd.tx.filter(function(t){return t&&t.date&&isFinite(t.amount)}).sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)}),occ={};
+  var rc=L.filter(function(t){return t.amount>0&&/chargement|recharge/i.test(t.label)}).map(function(t){return t.date});
+  if(!rc.length)return false;
+  var last=rc[rc.length-1],key=upMonthOf(last),m0=state.months[key];
+  if(m0&&m0.imported)return false;
+  var need=[];
+  L.forEach(function(t){var b=t.date+'|'+t.label+'|'+t.amount;occ[b]=(occ[b]||0)+1;t.uid=b+'|'+occ[b]});
+  L.forEach(function(t){
+    if(t.amount>=0||t.refused||t.date<last)return;
+    var k='u'+t.uid;
+    if(m0&&((m0.extras||[]).some(function(e){return e.upId===t.uid})||(m0.bankSeen&&m0.bankSeen[k])||(m0.del||[]).indexOf(k)>=0))return;
+    need.push(t)});
+  if(!need.length)return false;
+  var m=editM(key);m.bankSeen=m.bankSeen||{};
+  need.forEach(function(t){
+    var amt=Math.abs(t.amount),man=m.extras.filter(function(e){return e.cat===RESTO&&!e.upId&&!e.bankId&&Math.abs(num(e.amount)-amt)<0.005&&(!e.date||e.date===t.date)})[0];
+    if(man)man.upId=t.uid;else m.extras.push({id:uid(),label:String(t.label).slice(0,48),cat:RESTO,amount:amt,date:t.date,upId:t.uid});
+    m.bankSeen['u'+t.uid]=1});
+  touch('m-'+key);return true}
+function upLoad(){if(!bank.token)return;bankCall('/up').then(function(x){if(x.ok&&x.d&&x.d.ts){upd=x.d;try{upImport()}catch(e){}render()}}).catch(function(){})}
 var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false,sum:null};
 try{bank.token=localStorage.getItem('budget-bank-token')||null;bank.bal=JSON.parse(localStorage.getItem('budget-bank-bal')||'null')}catch(e){}
 function bankCall(path,opts){
@@ -1373,7 +1395,7 @@ function syMeta(){try{return JSON.parse(localStorage.getItem(SYM)||'{}')}catch(e
 function syIds(){return ['config'].concat(Object.keys(state.months).map(function(k){return 'm-'+k}))}
 function syncCount(){var m=syMeta();return syIds().filter(function(id){var d=docFor(id);return d&&(d._ts||0)>(m[id]||0)}).length+(persoPending()?1:0)}
 function syncPending(){return syncCount()>0}
-function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:x.id):(x.tid?x.tid+'|'+x.label:x.id)}
+function syKey(x,l){return l==='extras'?(x.bankId?'b'+x.bankId:(x.upId?'u'+x.upId:x.id)):(x.tid?x.tid+'|'+x.label:x.id)}
 function syMerge(a,b){var n=(a._ts||0)>=(b._ts||0)?[a,b]:[b,a],r=clone(n[0]),o=n[1],dead={};
   (a.del||[]).concat(b.del||[]).forEach(function(k){dead[k]=1});
   ['fixed','credits','extras','shared'].forEach(function(l){r[l]=(r[l]||[]).filter(function(x){return !dead[syKey(x,l)]});var have={};r[l].forEach(function(x){have[syKey(x,l)]=1});
