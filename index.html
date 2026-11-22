@@ -1520,7 +1520,7 @@ function vGifts(){
     var rh=r2(cap-sh),rl=r2(cap-sl),cl=function(v){return v<-0.005?'neg':(v>0.005?'pos':'')},tx=function(v){return v<=0.005&&v>=-0.005?'Épuisé':fmt(v)};
     var rows=E.map(function(e){return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span><span class="tag tb">'+(e.on==='50'?'50/50':'sur '+esc(nsName(e.on)))+'</span></span></span><span class="n">'+fmt(e.amount)+' <button class="x" data-ns="gdel" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
     var sel='<select name="on" aria-label="Imputation"><option value="50">Imputé 50/50</option><option value="h">100 % sur '+esc(H)+'</option><option value="l">100 % sur '+esc(L)+'</option></select>';
-    return '<section class="card"><h2>Budget cadeaux · '+esc(g.label)+' <button class="x" data-ns="gbdel" data-id="'+g.id+'" aria-label="Supprimer ce budget">×</button></h2>'+
+    return '<section class="card"><h2>Budget projet · '+esc(g.label)+' <button class="x" data-ns="gbdel" data-id="'+g.id+'" aria-label="Supprimer ce budget">×</button></h2>'+
       '<div class="small muted" style="margin:-4px 0 10px">'+fmt(cap)+' par personne · dépensé '+fmt(r2(sum(E,function(e){return num(e.amount)})))+' · hors budget global</div>'+
       '<div class="kp3"><div class="kpi"><div class="l">Reste '+esc(H)+'</div><div class="v '+cl(rh)+'">'+tx(rh)+'</div></div><div class="kpi"><div class="l">Reste '+esc(L)+'</div><div class="v '+cl(rl)+'">'+tx(rl)+'</div></div><div class="kpi"><div class="l">Dépenses</div><div class="v">'+E.length+'</div></div></div>'+
       (rows?'<div style="margin-top:10px">'+rows+'</div>':'<div class="empty">Aucune dépense pour l’instant.</div>')+
@@ -1529,7 +1529,7 @@ function vGifts(){
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
       '<input type="date" name="date" value="'+def+'" aria-label="Date">'+sel+
       '<button class="btn primary add" type="submit">Ajouter</button></form></div></div></section>'}).join('');
-  return cards+adOpen('gfn','Nouveau budget cadeaux')+'<form class="form" data-form="gf-new">'+
+  return cards+adOpen('gfn','Nouveau budget projet')+'<form class="form" data-form="gf-new">'+
     '<input type="text" name="label" placeholder="Nom (ex. Noël 2026)" required class="full" aria-label="Nom">'+
     '<input type="text" name="amount" inputmode="decimal" placeholder="Budget par personne (ex. 175)" required class="full" aria-label="Budget par personne">'+
     '<button class="btn primary add" type="submit">Créer</button></form></div></section>';
@@ -1720,7 +1720,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('button[data-ns]');if(!t)return;var N=nsd(),id=t.dataset.id;
   if(t.dataset.ns==='del'){N.ledger=N.ledger.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
   else if(t.dataset.ns==='gdel'){N=gfd();N.gexp=N.gexp.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
-  else if(t.dataset.ns==='gbdel'){if(!confirm('Supprimer ce budget cadeaux et toutes ses dépenses ?'))return;N=gfd();var gx=N.gexp.filter(function(x){return x.gid===id}).map(function(x){return x.id});N.gexp=N.gexp.filter(function(x){return x.gid!==id});N.gifts=N.gifts.filter(function(x){return x.id!==id});N.del=N.del.concat([id],gx).slice(-500);commitCfg()}
+  else if(t.dataset.ns==='gbdel'){if(!confirm('Supprimer ce budget projet et toutes ses dépenses ?'))return;N=gfd();var gx=N.gexp.filter(function(x){return x.gid===id}).map(function(x){return x.id});N.gexp=N.gexp.filter(function(x){return x.gid!==id});N.gifts=N.gifts.filter(function(x){return x.id!==id});N.del=N.del.concat([id],gx).slice(-500);commitCfg()}
   else if(t.dataset.ns==='cdel'){if(!confirm('Supprimer cette cagnotte et son historique ?'))return;N.custom=N.custom.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
   else if(t.dataset.ns==='pdel'){var pl=N.pots[t.dataset.pid]||[];N.pots[t.dataset.pid]=pl.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
 });
