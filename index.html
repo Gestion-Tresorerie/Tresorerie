@@ -408,13 +408,13 @@ var timers={},busy={},dirty={};
 function ymLabel(s){var p=s.split('-');return MOIS[+p[1]-1]+' '+p[0]}
 function shiftYm(s,k){var p=s.split('-');var d=new Date(+p[0],+p[1]-1+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function clone(o){return JSON.parse(JSON.stringify(o))}
-function normNous(n){n=n||{};return {custom:Array.isArray(n.custom)?n.custom:[],ledger:Array.isArray(n.ledger)?n.ledger:[],pots:(n.pots&&typeof n.pots==='object'&&!Array.isArray(n.pots))?n.pots:{},del:Array.isArray(n.del)?n.del:[]}}
+function normNous(n){n=n||{};return {custom:Array.isArray(n.custom)?n.custom:[],ledger:Array.isArray(n.ledger)?n.ledger:[],pots:(n.pots&&typeof n.pots==='object'&&!Array.isArray(n.pots))?n.pots:{},gifts:Array.isArray(n.gifts)?n.gifts:[],gexp:Array.isArray(n.gexp)?n.gexp:[],del:Array.isArray(n.del)?n.del:[]}}
 function nsd(){if(!state.config.nous)state.config.nous=normNous();return state.config.nous}
 function cfgMerge(l,r,rNewer){var w=clone(rNewer?r:l),o=rNewer?l:r,a=normNous(w.nous),b=normNous(o.nous),dead={};
   a.del.concat(b.del).forEach(function(k){dead[k]=1});
   function un(x,y){var out=(x||[]).filter(function(e){return !dead[e.id]}),h={};out.forEach(function(e){h[e.id]=1});(y||[]).forEach(function(e){if(!h[e.id]&&!dead[e.id])out.push(e)});return out}
   a.ledger=un(a.ledger,b.ledger);Object.keys(b.pots).forEach(function(k){a.pots[k]=un(a.pots[k],b.pots[k])});Object.keys(a.pots).forEach(function(k){a.pots[k]=un(a.pots[k],[])});
-  a.custom=un(a.custom,b.custom);a.del=Object.keys(dead).slice(-500);w.nous=a;return w}
+  a.custom=un(a.custom,b.custom);a.gifts=un(a.gifts,b.gifts);a.gexp=un(a.gexp,b.gexp);a.del=Object.keys(dead).slice(-500);w.nous=a;return w}
 function normCfg(d){
   var c=clone(d||{});
   return {contributors:Array.isArray(c.contributors)&&c.contributors.length?c.contributors:['Hasina','Linda'],
@@ -923,7 +923,7 @@ function vFix(m,c,xt){
       '<input type="hidden" name="group" value="Extra">'+
       '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required aria-label="Libellé">'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant prévu" required aria-label="Montant prévu">'+
-      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+vXhg()+vNous(m,c,0)+vShared():(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
+      '<button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+vXhg()+vNous(m,c,0,1)+vShared():(fxAdd?'<section class="card"><h2>Nouvelle charge fixe</h2><p class="small muted" style="margin:0 0 10px">Ajoutée au Modèle et à chaque mois de la période.</p><form class="form" data-form="add-rec">'+
       '<input type="text" name="label" placeholder="Libellé" required class="full" aria-label="Libellé">'+
       '<select name="group" aria-label="Groupe">'+gopts+'</select>'+
       '<input type="text" name="amount" inputmode="decimal" placeholder="Montant / mois" required aria-label="Montant par mois">'+
@@ -1511,7 +1511,30 @@ function vAdv(){
   return '<section class="card tap" role="button" data-act="tab" data-tab="nous"><h2>Frais à rembourser · '+L.length+'</h2>'+rows+'<div class="line" style="border-bottom:0"><span class="small muted">Total en attente</span><span class="n"><b>'+fmt(tot)+'</b></span></div></section>'}
 function nsDate(d){d=String(d||'');return d.length>=10?d.slice(8,10)+'/'+d.slice(5,7):d}
 function vCag(m,c){return vNous(m,c,1)}
-function vNous(m,c,pg){
+function gfd(){var N=nsd();N.gifts=N.gifts||[];N.gexp=N.gexp||[];return N}
+function vGifts(){
+  var N=gfd(),H=nsName('h'),L=nsName('l'),r2=function(x){return Math.round(x*100)/100},today=d0.toISOString().slice(0,10),def=today;
+  var cards=N.gifts.map(function(g){
+    var E=N.gexp.filter(function(e){return e.gid===g.id}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))}),cap=num(g.cap);
+    var sh=r2(sum(E,function(e){return e.on==='h'?num(e.amount):(e.on==='l'?0:num(e.amount)/2)})),sl=r2(sum(E,function(e){return e.on==='l'?num(e.amount):(e.on==='h'?0:num(e.amount)/2)}));
+    var rh=r2(cap-sh),rl=r2(cap-sl),cl=function(v){return v<-0.005?'neg':(v>0.005?'pos':'')},tx=function(v){return v<=0.005&&v>=-0.005?'Épuisé':fmt(v)};
+    var rows=E.map(function(e){return '<div class="line"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(nsDate(e.date))+'</span><span class="tag tb">'+(e.on==='50'?'50/50':'sur '+esc(nsName(e.on)))+'</span></span></span><span class="n">'+fmt(e.amount)+' <button class="x" data-ns="gdel" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'}).join('');
+    var sel='<select name="on" aria-label="Imputation"><option value="50">Imputé 50/50</option><option value="h">100 % sur '+esc(H)+'</option><option value="l">100 % sur '+esc(L)+'</option></select>';
+    return '<section class="card"><h2>Budget cadeaux · '+esc(g.label)+' <button class="x" data-ns="gbdel" data-id="'+g.id+'" aria-label="Supprimer ce budget">×</button></h2>'+
+      '<div class="small muted" style="margin:-4px 0 10px">'+fmt(cap)+' par personne · dépensé '+fmt(r2(sum(E,function(e){return num(e.amount)})))+' · hors budget global</div>'+
+      '<div class="kp3"><div class="kpi"><div class="l">Reste '+esc(H)+'</div><div class="v '+cl(rh)+'">'+tx(rh)+'</div></div><div class="kpi"><div class="l">Reste '+esc(L)+'</div><div class="v '+cl(rl)+'">'+tx(rl)+'</div></div><div class="kpi"><div class="l">Dépenses</div><div class="v">'+E.length+'</div></div></div>'+
+      (rows?'<div style="margin-top:10px">'+rows+'</div>':'<div class="empty">Aucune dépense pour l’instant.</div>')+
+      adIn('Ajouter une dépense')+'<form class="form" data-form="gf-add"><input type="hidden" name="gid" value="'+g.id+'">'+
+      '<input type="text" name="label" placeholder="Libellé (ex. Cadeau Ambre)" required class="full" aria-label="Libellé">'+
+      '<input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant">'+
+      '<input type="date" name="date" value="'+def+'" aria-label="Date">'+sel+
+      '<button class="btn primary add" type="submit">Ajouter</button></form></div></div></section>'}).join('');
+  return cards+adOpen('gfn','Nouveau budget cadeaux')+'<form class="form" data-form="gf-new">'+
+    '<input type="text" name="label" placeholder="Nom (ex. Noël 2026)" required class="full" aria-label="Nom">'+
+    '<input type="text" name="amount" inputmode="decimal" placeholder="Budget par personne (ex. 175)" required class="full" aria-label="Budget par personne">'+
+    '<button class="btn primary add" type="submit">Créer</button></form></div></section>';
+}
+function vNous(m,c,pg,noG){
   var N=nsd(),open=N.ledger.filter(function(x){return !x.done});
   var sm=function(f){return Math.round(sum(open.filter(f),function(x){return num(x.amount)})*100)/100};
   var hl=sm(function(x){return x.by==='h'&&x.owe==='l'}),lh=sm(function(x){return x.by==='l'&&x.owe==='h'}),net=Math.round((hl-lh)*100)/100;
@@ -1554,7 +1577,7 @@ function vNous(m,c,pg){
       '<input type="text" name="label" placeholder="Libellé (ex. courses école)" required class="full" aria-label="Libellé">'+
       '<input type="date" name="date" value="'+def+'" class="full" aria-label="Date">'+
       '<button class="btn primary add" type="submit">Enregistrer</button></form></div></div>'+(ents?'<div class="grp" style="margin-top:14px"><b>Derniers mouvements</b></div>'+ents:'')+'</section>'}).join('');
-  if(!pg)return head+list+form;
+  if(!pg)return head+list+form+(noG?'':vGifts());
   return (pots||'<section class="card"><h2>Cagnottes</h2><div class="empty">Aucune cagnotte.</div></section>')+adOpen('cag','Nouvelle cagnotte')+'<form class="form" data-form="ns-cag"><input type="text" name="label" placeholder="Nom (ex. Vacances)" required class="full" aria-label="Nom"><input type="text" name="amount" inputmode="decimal" placeholder="Solde de départ (optionnel)" class="full" aria-label="Solde de départ"><button class="btn primary add" type="submit">Créer</button></form></div></section>';
 }
 var anLast={};
@@ -1696,6 +1719,8 @@ document.addEventListener('click',function(e){
 document.addEventListener('click',function(e){
   var t=e.target.closest('button[data-ns]');if(!t)return;var N=nsd(),id=t.dataset.id;
   if(t.dataset.ns==='del'){N.ledger=N.ledger.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
+  else if(t.dataset.ns==='gdel'){N=gfd();N.gexp=N.gexp.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
+  else if(t.dataset.ns==='gbdel'){if(!confirm('Supprimer ce budget cadeaux et toutes ses dépenses ?'))return;N=gfd();var gx=N.gexp.filter(function(x){return x.gid===id}).map(function(x){return x.id});N.gexp=N.gexp.filter(function(x){return x.gid!==id});N.gifts=N.gifts.filter(function(x){return x.id!==id});N.del=N.del.concat([id],gx).slice(-500);commitCfg()}
   else if(t.dataset.ns==='cdel'){if(!confirm('Supprimer cette cagnotte et son historique ?'))return;N.custom=N.custom.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
   else if(t.dataset.ns==='pdel'){var pl=N.pots[t.dataset.pid]||[];N.pots[t.dataset.pid]=pl.filter(function(x){return x.id!==id});N.del=N.del.concat([id]).slice(-500);commitCfg()}
 });
@@ -1712,6 +1737,8 @@ document.addEventListener('submit',function(e){
   else if(k==='ns-add'){var by=fd.get('by'),ow=fd.get('owe'),half=!!fd.get('half');if(half){ow=(by==='h'?'l':'h');amount=Math.round(amount/2*100)/100}
     if(ow!=='b'&&ow===by){nsErr='Celui qui avance ne peut pas être celui qui rembourse.';render();return}
     nsErr='';nsd().ledger.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:amount,by:by,owe:ow,done:false,nb:fd.get('imp')?0:1});commitCfg()}
+  else if(k==='gf-new'){gfd().gifts.push({id:'gf-'+uid(),label:label.slice(0,40),cap:Math.abs(amount)});commitCfg()}
+  else if(k==='gf-add'){var gv=String(fd.get('gid')||''),on=fd.get('on');if(!gfd().gifts.some(function(x){return x.id===gv}))return;gfd().gexp.push({id:uid(),gid:gv,label:label,amount:Math.abs(amount),date:fd.get('date')||d0.toISOString().slice(0,10),on:(on==='h'||on==='l')?on:'50'});commitCfg()}
   else if(k==='ns-cag'){var cid='cg-'+uid(),NN=nsd();NN.custom.push({id:cid,label:label.slice(0,40)});if(amount)NN.pots[cid]=[{id:uid(),label:'Solde de départ',date:d0.toISOString().slice(0,10),amount:amount}];commitCfg()}
   else if(k==='ns-pot'){var pid=String(fd.get('pid')||''),pl=nsd().pots[pid]||(nsd().pots[pid]=[]);
     pl.push({id:uid(),label:label,date:fd.get('date')||d0.toISOString().slice(0,10),amount:(fd.get('kind')==='in'?1:-1)*Math.abs(amount)});commitCfg()}
