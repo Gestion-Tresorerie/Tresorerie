@@ -1020,7 +1020,14 @@ function upImport(){
     if(man)man.upId=t.uid;else m.extras.push({id:uid(),label:String(t.label).slice(0,48),cat:RESTO,amount:amt,date:t.date,upId:t.uid});
     m.bankSeen['u'+t.uid]=1});
   touch('m-'+key);return true}
-function upStamp(){if(!upd||!upd.ts)return '';var d=new Date(upd.ts),z=function(n){return (n<10?'0':'')+n};return z(d.getDate())+'/'+z(d.getMonth()+1)+' '+z(d.getHours())+':'+z(d.getMinutes())}
+function upStamp(){
+  if(!upd||!upd.ts)return '';
+  var d=new Date(upd.ts),n=new Date(),z=function(n){return (n<10?'0':'')+n},hm=z(d.getHours())+':'+z(d.getMinutes()),
+    age=n.getTime()-d.getTime(),
+    d0=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(),n0=new Date(n.getFullYear(),n.getMonth(),n.getDate()).getTime(),
+    dd=Math.round((n0-d0)/86400000);
+  if(age>=30*3600000){var j=Math.max(1,Math.floor(age/86400000));return '<span style="color:var(--bad);font-weight:700">⚠ Up il y a '+j+' j</span>'}
+  return 'Up · '+(dd<=0?'auj. ':'hier ')+hm}
 function upLoad(){if(!bank.token)return;bankCall('/up').then(function(x){if(x.ok&&x.d&&x.d.ts){upd=x.d;try{upImport()}catch(e){}render()}}).catch(function(){})}
 var bank={token:null,st:null,tx:null,fetched:null,msg:'',busy:false,sum:null};
 try{bank.token=localStorage.getItem('budget-bank-token')||null;bank.bal=JSON.parse(localStorage.getItem('budget-bank-bal')||'null')}catch(e){}
