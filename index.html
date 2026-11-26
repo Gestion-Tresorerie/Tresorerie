@@ -328,7 +328,8 @@ body{padding-bottom:28px}
 .card>.grp:first-child{margin-top:0}
 .line .nm,.row .nm,.mrow .nm{font-weight:500}
 .line .small,.line .tags{opacity:.85}
-#persoBtn[hidden]{display:none!important}
+#persoBtn[hidden],#pfixBtn[hidden],#pdepBtn[hidden]{display:none!important}
+.line.is-off{opacity:.5}.line.is-off .nm{text-decoration:line-through}
 .pseg{display:flex;gap:4px;margin:0 0 12px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-x:auto}.pseg button{flex:1;white-space:nowrap;font:inherit;font-size:13px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}.pseg button[aria-selected=true]{background:var(--accent);color:#fff;font-weight:600}
 .phead{display:flex;align-items:center;justify-content:space-between;gap:12px}.phead .btn{flex:0 0 auto}
 .pd-al{display:grid;gap:6px;margin:0 0 12px}.pd-a{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:12px;font-size:13.5px;border:1px solid var(--line)}.pd-a i{flex:0 0 8px;height:8px;border-radius:50%}
@@ -371,7 +372,9 @@ body{padding-bottom:28px}
   <button data-act="tab" data-tab="historique"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>Historique</button>
   <button data-act="tab" data-tab="modele"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Modèle</button>
   <button data-act="tab" data-tab="banque"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v7M9 10v7M15 10v7M19 10v7M3 20h18"/></svg>Banque</button>
-  <button data-act="tab" data-tab="perso" id="persoBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>Perso</button>
+  <button data-act="tab" data-tab="perso" id="persoBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>Perso - Synthèse</button>
+  <button data-act="tab" data-tab="pfix" id="pfixBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Perso - Fixe</button>
+  <button data-act="tab" data-tab="pdep" id="pdepBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12M16 14h2"/></svg>Perso - Dépense</button>
 </nav></div>
 
 <script>
@@ -511,7 +514,7 @@ function calc(m){
   r.coursesPlanned=m.courses.planned||0;
   r.coursesSpent=sum(m.extras.filter(function(e){return e.cat==='Courses'||e.cat==='Extra'}),function(e){return e.amount});
   r.restoPlanned=restoOf(m);
-  r.restoSpent=sum(m.extras.filter(function(e){return e.cat===RESTO}),function(e){return e.amount});
+  r.restoSpent=sum(m.extras.filter(function(e){return e.cat===RESTO&&!e.off}),function(e){return e.amount});
   r.otherExtras=sum(m.extras.filter(function(e){return e.cat!=='Courses'&&e.cat!=='Extra'&&e.cat!==RESTO}),function(e){return e.amount});
   r.extrasTotal=r.coursesSpent+r.otherExtras;
   r.coursesProj=Math.max(r.coursesPlanned,r.coursesSpent);
@@ -938,7 +941,7 @@ function vDep(m,c){
   var ex=m.extras.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var copts=CATS.map(function(k){return '<option>'+esc(k)+'</option>'}).join('');
   var list=ex.map(function(e){
-    return '<div class="line tap" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+((e.tot||e.from||e.bk)?'<span class="tag tb">'+(e.tot?'réparti · Fortuneo '+fmt(e.tot):(e.from?'issu d’une opération Fortuneo':'relié Fortuneo '+fmt(e.bk)))+'</span>':'')+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
+    return '<div class="line tap'+(e.off?' is-off':'')+'" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+(e.off?'<span class="tag">Exclu</span>':'')+((e.tot||e.from||e.bk)?'<span class="tag tb">'+(e.tot?'réparti · Fortuneo '+fmt(e.tot):(e.from?'issu d’une opération Fortuneo':'relié Fortuneo '+fmt(e.bk)))+'</span>':'')+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
       '<span class="n">'+fmt(e.amount)+' <button class="x" data-act="del" data-list="extras" data-id="'+e.id+'" aria-label="Supprimer">×</button></span></div>'+(ed.id===e.id?edSheet(e):'');
   }).join('');
   var envT=function(label,sp,pl,attr,aria,hint,rem,stamp){var p=pl>0?sp/pl*100:(sp>0?101:0),k=label==='Courses'?((pl-sp)>=275?'g':((pl-sp)>=80?'o':'r')):(pl>0?(((pl-sp)/pl*100>=75)?'g':(((pl-sp)/pl*100>=25)?'o':'r')):(sp>0?'r':'g')),over=sp>pl+0.005,nf=num(rem?pl-sp:sp).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1593,7 +1596,7 @@ function render(){
   paintStatus();try{pePaint()}catch(e){}
   document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',(b.dataset.tab===state.tab||(b.dataset.tab==='plus'&&['revenus','historique','modele','banque'].indexOf(state.tab)>=0))?'page':'false')});
   var m=getV(ym),c=calc(m);
-  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,nous:vNous,cagnotte:vCag,historique:vHist,banque:vBank,perso:vPerso,modele:vModel,plus:vMore}[state.tab];
+  var f={synthese:vSynth,revenus:vRev,fixes:vFix,extra:function(m,c){return vFix(m,c,true)},depenses:vDep,nous:vNous,cagnotte:vCag,historique:vHist,banque:vBank,perso:function(){return vPerso('syn')},pfix:function(){return vPerso('fix')},pdep:function(){return vPerso('dep')},modele:vModel,plus:vMore}[state.tab];
   var keepFocus=null;
   var nowT=Date.now(),an=nowT-(anLast[state.tab]||0)>5000;anLast[state.tab]=nowT;
   $('#view').innerHTML='<div class="syn'+(an?' an':'')+'" style="display:contents">'+f(m,c)+'</div>';
@@ -1787,7 +1790,7 @@ function peIsF(c){return String(c).indexOf('Foyer')===0}
 try{pe.key=localStorage.getItem('budget-perso-key')||null}catch(e){}
 function peNorm(){var d=null;try{d=JSON.parse(localStorage.getItem('budget-perso-v1')||'null')}catch(e){}
   if(!d||typeof d.ts!=='number'||!d.data)d={ts:0,data:{}};pe.doc=peFix(d)}
-function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};x.rules=(x.rules&&typeof x.rules==='object')?x.rules:{};return d}
+function peFix(d){var x=d.data;x.incomes=Array.isArray(x.incomes)?x.incomes:[];x.fixed=Array.isArray(x.fixed)?x.fixed:[];x.env=(x.env&&typeof x.env==='object')?x.env:{};x.tx=(x.tx&&typeof x.tx==='object')?x.tx:{};x.paid=(x.paid&&typeof x.paid==='object')?x.paid:{};x.rules=(x.rules&&typeof x.rules==='object')?x.rules:{};x.off=(x.off&&typeof x.off==='object')?x.off:{};x.up=(x.up&&typeof x.up==='object')?x.up:{};return d}
 peNorm();
 function peStore(){try{localStorage.setItem('budget-perso-v1',JSON.stringify(pe.doc))}catch(e){}}
 function peMetaGet(){try{return JSON.parse(localStorage.getItem('budget-perso-sync')||'{}')||{}}catch(e){return {}}}
@@ -1798,19 +1801,20 @@ function peMergeMap(b,l,r,lNew){var o={},ks={};[b,l,r].forEach(function(m){Objec
   Object.keys(ks).forEach(function(k){var bv=b?b[k]:undefined,lv=l?l[k]:undefined,rv=r?r[k]:undefined,v;
     if(peEq(lv,rv))v=lv;else if(peEq(lv,bv))v=rv;else if(peEq(rv,bv))v=lv;else v=lNew?lv:rv;if(v!==undefined)o[k]=v});return o}
 function peArrMap(a){var m={};(a||[]).forEach(function(x){m[x.id]=x});return m}
-function peMergeArr(b,l,r,lNew){var mm=peMergeMap(peArrMap(b),peArrMap(l),peArrMap(r),lNew),out=[],seen={};
-  (l||[]).concat(r||[]).forEach(function(x){if(seen[x.id])return;seen[x.id]=1;if(mm[x.id]!==undefined)out.push(mm[x.id])});return out}
+function peMergeArr(b,l,r,lNew){var mm=peMergeMap(peArrMap(b),peArrMap(l),peArrMap(r),lNew),out=[],seen={},ids=function(a){return (a||[]).map(function(x){return x.id})},
+    ob=ids(b),ol=ids(l),or=ids(r),pri=peEq(ol,ob)?or.concat(ol):(peEq(or,ob)?ol.concat(or):(lNew?ol.concat(or):or.concat(ol)));
+  pri.forEach(function(id){if(seen[id])return;seen[id]=1;if(mm[id]!==undefined)out.push(mm[id])});return out}
 function peMerge3(b,l,r,lNew){b=b||{};var o={};Object.keys(r).forEach(function(k){o[k]=r[k]});Object.keys(l).forEach(function(k){o[k]=l[k]});
   if(!lNew)Object.keys(r).forEach(function(k){o[k]=r[k]});
   ['incomes','fixed'].forEach(function(k){o[k]=peMergeArr(b[k],l[k],r[k],lNew)});
-  ['env','tx','paid','rules'].forEach(function(k){o[k]=peMergeMap(b[k],l[k],r[k],lNew)});return o}
+  ['env','tx','paid','rules','off','up'].forEach(function(k){o[k]=peMergeMap(b[k],l[k],r[k],lNew)});return o}
 function peDiffLines(f,t,side){var out=[],fx=f.fixed||[],tx_=t.fixed||[];
   function lbl(id,list1,list2){var x=peArrMap(list2)[id]||peArrMap(list1)[id];return x?x.label:'?'}
   function line(sym,txt){out.push([sym,side,txt])}
   ['incomes','fixed'].forEach(function(k){var A=peArrMap(f[k]),B=peArrMap(t[k]),seen={},nm=k==='incomes'?'Revenu':'Charge perso';
     Object.keys(A).concat(Object.keys(B)).forEach(function(id){if(seen[id])return;seen[id]=1;var a=A[id],b=B[id];
       if(a&&!b)line('−',nm+' supprimé(e) · '+esc(a.label));else if(!a&&b)line('+',nm+' · '+esc(b.label)+' · '+fmt(b.amount));else if(!peEq(a,b))line('~',nm+' · '+esc(b.label)+' : '+fmt(a.amount)+' → '+fmt(b.amount))})});
-  [['tx','Catégorie'],['rules','Règle'],['paid','Réglé'],['env','Enveloppe']].forEach(function(sc){var k=sc[0],A=f[k]||{},B=t[k]||{},seen={};
+  [['tx','Catégorie'],['rules','Règle'],['paid','Réglé'],['env','Enveloppe'],['off','Exclu'],['up','Achat Up perso']].forEach(function(sc){var k=sc[0],A=f[k]||{},B=t[k]||{},seen={};
     Object.keys(A).concat(Object.keys(B)).forEach(function(id){if(seen[id])return;seen[id]=1;var a=A[id],b=B[id],name,txt;
       if(k==='tx'){var o=(pe.tx||[]).filter(function(y){return y.id===id})[0];name=o?o.label:'opération';a=a&&a.cat;b=b&&b.cat}
       else if(k==='paid'){var pr=id.split(':');name=lbl(pr[1],f.fixed,t.fixed)+' ('+pr[0]+')'}
@@ -1857,7 +1861,7 @@ function peTx(force){
 }
 function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1');localStorage.removeItem('budget-perso-sync')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
 function peVisible(){return !!(bank.st&&bank.st.user==='hasina')}
-function pePaint(){var b=document.getElementById('persoBtn'),v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();if(b)b.hidden=!v;
+function pePaint(){var v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();['persoBtn','pfixBtn','pdepBtn'].forEach(function(i){var b=document.getElementById(i);if(b)b.hidden=!v});
   if(v&&pe.key&&!pe.loaded){pe.loaded=true;setTimeout(peLoad,0)}}
 function peIncDates(){if(pe._idk===pe.tx)return pe._idd;var o={};(pe.tx||[]).forEach(function(t){if(t.amount>0&&/STYX|SIMPLICITI/i.test(String(t.label||'')))o[String(t.date||'').slice(0,10)]=1});pe._idk=pe.tx;pe._idd=o;return o}
 function peDayShift(d,k){var x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+k);return x.toISOString().slice(0,10)}
@@ -1968,7 +1972,7 @@ function peTile(st,T,days,warn){
   if(b!=null){for(i=29;i>=0;i--){var d=peDayShift(today,-i),v=b-sum(tx.filter(function(t){return String(t.date||'').slice(0,10)>d}),function(t){return +t.amount||0});ser.push({d:d,v:v});mn=Math.min(mn,v);mx=Math.max(mx,v)}}
   var W=340,Hc=74,y0=12,y1=62,rg=(mx-mn)||1,X=function(k){return k/29*W},Y=function(v){return y1-(v-mn)/rg*(y1-y0)},path='';
   if(ser.length){path='M'+X(0).toFixed(1)+' '+Y(ser[0].v).toFixed(1);for(i=1;i<ser.length;i++){var px=X(i-1),py=Y(ser[i-1].v),cx=X(i),cy=Y(ser[i].v),mxp=(px+cx)/2;path+=' C'+mxp.toFixed(1)+' '+py.toFixed(1)+' '+mxp.toFixed(1)+' '+cy.toFixed(1)+' '+cx.toFixed(1)+' '+cy.toFixed(1)}}
-  var sal=null;tx.forEach(function(t){var d=String(t.date||'').slice(0,10);if(t.amount>0&&peCat(t)==='Revenu'&&d>=ser[0].d&&(!sal||d>sal))sal=d});
+  var sal=null;tx.forEach(function(t){var d=String(t.date||'').slice(0,10);if(t.amount>0&&peCat(t)==='Revenu'&&ser.length&&d>=ser[0].d&&(!sal||d>sal))sal=d});
   var si=sal&&ser.length?ser.map(function(x){return x.d}).indexOf(sal):-1,w7=ser.length?b-ser[22].v:0,
     inn=Math.round(sum(T.filter(function(t){return t.amount>0}),function(t){return t.amount})*100)/100,out=Math.round(sum(T.filter(function(t){return t.amount<0}),function(t){return -t.amount})*100)/100,
     fs=b!=null?fmt(b):'—',ic=fs.lastIndexOf(','),big=ic>0?fs.slice(0,ic+1):fs,dec=ic>0?fs.slice(ic+1):'',
@@ -1996,62 +2000,117 @@ function peTile(st,T,days,warn){
     '<span style="'+pill+';background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.2)"><span style="width:7px;height:7px;border-radius:50%;background:#6ee7b7;box-shadow:0 0 8px #6ee7b7"></span>Synchro '+esc(hm)+'</span>'+
     '<span style="'+pill+';'+(warn?'background:rgba(244,63,94,.35);border:1px solid rgba(253,164,175,.8);color:#ffe4e6':'background:rgba(0,0,0,.28);border:1px solid rgba(253,230,138,.4);color:#fde68a')+'">'+(!st||!st.linked?'Non relié':(st.expired?'Accès expiré':'Accès · '+(days!=null?days+' j':'ok')))+'</span></div></section>';
   return h}
-function vPerso(){
-  var h='';
+/* ---------- Perso : 3 onglets (Synthèse / Fixe / Dépense) ---------- */
+function upList(){
+  if(!upd||!upd.tx)return [];
+  var L=upd.tx.filter(function(t){return t&&t.date&&isFinite(t.amount)}).sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)}),occ={};
+  L.forEach(function(t){var b=t.date+'|'+t.label+'|'+t.amount;occ[b]=(occ[b]||0)+1;t.uid=b+'|'+occ[b]});return L}
+function peFixMap(){var D=pe.doc.data,T=peMonth().filter(function(t){return t.amount<0}),used={},res={};
+  T.forEach(function(t){var o=D.tx[t.id];if(o&&o.link&&o.link.k==='fix'&&!res[o.link.id]){res[o.link.id]=t;used[t.id]=1}});
+  D.fixed.forEach(function(x){if(res[x.id]||D.off[ym+':'+x.id])return;var a=num(x.amount);
+    for(var i=0;i<T.length;i++){var t=T[i],c=peCat(t),o=D.tx[t.id];if(used[t.id]||(o&&o.link))continue;
+      if((c==='Fixe'||c==='Abonnements')&&Math.abs(-t.amount-a)<0.015){res[x.id]=t;used[t.id]=1;break}}});
+  return res}
+function peRestoStat(){var D=pe.doc.data,B=num(D.env['Ticket-resto']),L=upList().filter(function(t){return t.amount<0&&!t.refused&&upMonthOf(t.date)===ym}),
+  mine=L.filter(function(t){return D.up[t.uid]}),S=Math.round(sum(mine,function(t){return -t.amount})*100)/100;
+  return {B:B,S:S,left:Math.round((B-S)*100)/100,L:L,mine:mine}}
+/* un achat Up « perso » sort du budget ticket-resto du foyer (ligne conservée, marquée Exclu) */
+function peUpMark(t,on){var key=upMonthOf(t.date),m=editM(key),ex;m.bankSeen=m.bankSeen||{};m.extras=m.extras||[];
+  m.extras.forEach(function(e){if(e.upId===t.uid)ex=e});
+  if(on){if(ex)ex.off=true;else m.bankSeen['u'+t.uid]=1}
+  else{if(ex)delete ex.off;else{delete m.bankSeen['u'+t.uid];m.extras.push({id:uid(),label:String(t.label).slice(0,48),cat:RESTO,amount:Math.abs(t.amount),date:t.date,upId:t.uid})}}
+  nsSync();touch('m-'+key)}
+function peRelSel(t){var D=pe.doc.data,o=D.tx[t.id],lk=o&&o.link,v=lk?(lk.k==='fix'?'fix:'+lk.id:'adv'):'';
+  return '<select data-perel="'+esc(t.id)+'" aria-label="Relier l’opération"><option value="">Relier à…</option>'+
+    D.fixed.filter(function(x){return !D.off[ym+':'+x.id]}).map(function(x){return '<option value="fix:'+esc(x.id)+'"'+(v==='fix:'+x.id?' selected':'')+'>Charge fixe · '+esc(x.label)+'</option>'}).join('')+
+    '<option value="adv"'+(v==='adv'?' selected':'')+'>Avance pour '+esc(nsName('l'))+' (50 %)</option></select>'}
+function peRestoSec(){var D=pe.doc.data,R=peRestoStat(),ok=upd&&upd.balance!=null,st=upStamp(),h='<section class="card"><h2>Ticket-resto</h2>';
+  if(!ok)h+='<div class="empty">Aucun relevé Up pour le moment : lance le raccourci « Synchro Up » sur le PC.</div>';
+  else h+='<div class="line"><span>Solde de la carte'+(st?' <span class="small muted">'+st+'</span>':'')+'</span><span class="n">'+fmt(upd.balance)+'</span></div>'+(upd.daily!=null?'<div class="line"><span>Disponible aujourd’hui</span><span class="n">'+fmt(upd.daily)+'</span></div>':'');
+  h+='<div class="line"><span>Budget perso du mois</span><span class="n">'+(R.B>0?fmt(R.B):'—')+'</span></div><div class="line"><span>Dépensé perso</span><span class="n">'+fmt(R.S)+'</span></div>'+
+    (R.B>0?'<div class="line"><span><b>Reste perso</b></span><span class="n '+(R.left<0?'neg':'pos')+'"><b>'+fmt(R.left)+'</b></span></div>':'')+
+    '<div class="grp"><b>Achats Up · '+esc(ymLabel(ym))+' — « Perso » les sort du budget ticket-resto du foyer</b></div>'+
+    (R.L.length?R.L.slice().reverse().map(function(t){var on=!!D.up[t.uid];return '<div class="line"><span class="t"><span class="nm">'+esc(t.label)+'</span><span class="tags"><span class="tag">'+esc(String(t.date).slice(5).split('-').reverse().join('/'))+'</span><span class="tag">'+(on?'perso':'foyer')+'</span></span></span><span class="n">'+fmt(-t.amount)+' <button class="btn mini'+(on?' primary':'')+'" data-pe="upp" data-uid="'+esc(t.uid)+'">'+(on?'Perso ✓':'Perso')+'</button></span></div>'}).join(''):'<div class="empty">Aucun achat Up ce mois-ci.</div>')+'</section>'+
+    adOpen('perest','Budget ticket-resto perso')+'<form class="form" data-peform="rest"><input type="text" name="budget" inputmode="decimal" placeholder="Budget mensuel perso (0 = aucun)" value="'+(R.B>0?inp(R.B):'')+'" class="full" aria-label="Budget ticket-resto perso"><button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
+  return h}
+function peEnvSec(by){var D=pe.doc.data,rows=PE_CATS.filter(function(k){return num(D.env[k])>0||(by[k]||0)>0}).map(function(k){return [k,Math.round((by[k]||0)*100)/100,num(D.env[k])]}).sort(function(a,b){return b[1]-a[1]}),sc=0;
+  rows.forEach(function(r){sc=Math.max(sc,r[1],r[2])});sc=sc||1;
+  return '<section class="card"><h2>Enveloppes · '+esc(ymLabel(ym))+'</h2>'+(rows.length?'<div class="pd-cat">'+rows.map(function(r){var env=r[2]>0,o=env&&r[1]>r[2],w=env&&r[1]>=r[2]*0.8&&!o,col=o?'var(--bad)':(w?'var(--warn)':'var(--accent)');
+    return '<div class="pd-cr"><span class="pd-cn">'+esc(r[0])+'</span><span class="pd-cb"><i style="width:'+Math.min(100,r[1]/sc*100).toFixed(1)+'%;background:'+col+'"></i>'+(env?'<u style="left:'+Math.min(100,r[2]/sc*100).toFixed(1)+'%"></u>':'')+'</span><span class="pd-cv'+(o?' neg':'')+'">'+Math.round(r[1])+(env?'<small> / '+Math.round(r[2])+'</small>':'')+'</span></div>'}).join('')+'</div>':'<div class="empty">Aucune dépense ni plafond ce mois-ci.</div>')+'</section>'+
+  adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>'}
+function peSecCompte(st,vu,days,warn){var h='';
+    h+='<section class="card"><h2>Connexion Société Générale</h2>';
+    if(!st)h+='<div class="small muted">Chargement…</div>';
+    else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
+    else h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(warn?'neg':'pos')+'">'+(st.expired?'Consentement expiré':(vu?'jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div><div class="brow"><button class="btn'+(warn?' primary':'')+'" data-pe="connect">Renouveler le consentement</button></div>';
+    h+='</section><section class="card"><h2>Cet appareil</h2><p class="small muted" style="margin:0 0 10px">Efface le mot de passe perso mémorisé ici. Les données restent sur le serveur.</p><div class="brow"><button class="btn" data-pe="lock">Verrouiller cet appareil</button></div></section>';
+  return h}
+function vPerso(M){
+  M=M||'syn';var h='';
   if(bank.token&&!bank.st)return '<section class="card"><h2>Perso</h2><div class="small muted">Chargement…</div></section>';
   if(!peVisible())return '<section class="card"><h2>Perso</h2><div class="empty">Section indisponible.</div></section>';
   if(pe.msg)h+='<div class="note warn">'+esc(pe.msg)+'</div>';
   if(!pe.key)return h+'<section class="card"><h2>Perso</h2><p class="small muted" style="margin:0 0 10px">Espace privé : entre ton mot de passe perso. Il n’est conservé que sur cet appareil.</p>'+
     '<form class="form" data-peform="unlock"><input type="password" name="password" placeholder="Mot de passe perso" required autocomplete="current-password" aria-label="Mot de passe perso" class="full"><button class="btn primary full" type="submit"'+(pe.busy?' disabled':'')+'>Déverrouiller</button></form></section>';
-  var D=pe.doc.data,st=pe.st,T=peMonth(),sub=pe.sub||'apercu';pe.sub=sub;
+  var D=pe.doc.data,st=pe.st,T=peMonth(),sub=M;
   var rcv=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),rcvS=Math.round(sum(rcv,function(t){return t.amount})*100)/100,
     inc=rcv.length?rcvS:Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
     deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0,fixT=0,foyP=0,foyC=0,foyE=0;
   deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(peIsF(c)){foy+=a;if(c==='Foyer·Charge')foyC+=a;else if(c==='Foyer·Extra')foyE+=a;else foyP+=a}else if(c==='Fixe'||c==='Abonnements')fixT+=a;else if(c!=='Ignorer'&&c!=='Revenu')vr+=a;if(!pe.doc.data.tx[t.id]&&!peRuled(t))todo++});
-  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;if(fixT>0)fix=fixT;var FYd=peFoy(),pafLeft=(FYd.has&&FYd.due>0)?Math.max(0,Math.round((FYd.due-foyP)*100)/100):0,reste=Math.round((inc-fix-foy-vr-pafLeft)*100)/100;
+  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;var FMv=peFixMap();fix=Math.round((fixT+sum(D.fixed.filter(function(x){return !D.off[ym+':'+x.id]&&!FMv[x.id]}),function(x){return num(x.amount)}))*100)/100;var FYd=peFoy(),pafLeft=(FYd.has&&FYd.due>0)?Math.max(0,Math.round((FYd.due-foyP)*100)/100):0,reste=Math.round((inc-fix-foy-vr-pafLeft)*100)/100;
   var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
-  h+=peTile(st,T,days,warn);
+  if(M==='syn')h+=peTile(st,T,days,warn);
   if(pe.histFb)h+='<div class="note warn">La banque refuse l’historique demandé : opérations limitées à 90 jours (depuis le '+esc(pe.hist||'')+').</div>';
   if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
-  h+=peSegs();
   var PP=pePeriod(ym);
-  if(sub==='apercu'){
-    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,pafLeft:pafLeft,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
-  }else if(sub==='ops'){
-    var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
-    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
-      return '<div class="pop"><div class="pop1"><span class="nm">'+(pend?'<i class="pdot" title="À valider"></i>':'')+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
-        '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
-        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div></div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
-  }else if(sub==='budget'){
-    var fxl=deb.filter(function(t){var c=peCat(t);return c==='Fixe'||c==='Abonnements'||peIsF(c)}).sort(function(x,y){return peCat(x).localeCompare(peCat(y))});
-    h+='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
-      '<div class="grp"><b>Prévus (saisis)'+(rcv.length?' · ignorés tant que des revenus sont reçus':'')+'</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu saisi.</div>')+'</section>'+
-      adOpen('peinc','Ajouter un revenu prévu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
-      '<section class="card"><h2>Charges fixes · '+esc(ymLabel(ym))+'</h2>'+(fxl.length?'<div class="grp"><b>Opérations taguées Fixe / Abonnements / Foyer…</b></div>'+fxl.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
-      '<div class="grp"><b>Prévues (saisies)'+(fixT>0?' · ignorées tant que des opérations sont taguées':'')+'</b></div>'+(D.fixed.length?D.fixed.map(function(x){var pd=D.paid[ym+':'+x.id];return '<div class="line tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span><b>'+(pd?'☑':'☐')+' '+esc(x.label)+'</b></span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucune charge saisie.</div>')+'</section>'+
-      adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
-      adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
-  }else if(sub==='foyer'){
+  if(sub==='syn'){
+    var FMa=peFixMap(),unpaid=Math.round(sum(D.fixed.filter(function(x){return !D.off[ym+':'+x.id]&&!FMa[x.id]&&!D.paid[ym+':'+x.id]}),function(x){return num(x.amount)})*100)/100,
+      paidF=Math.round(Math.max(0,fix-unpaid)*100)/100,fp=fix>0?paidF/fix*100:0,fk=(fix>0&&unpaid<0.005)?'g':'o',
+      RS=peRestoStat(),rB=RS.B,rk=rB>0?(((rB-RS.S)/rB*100>=75)?'g':(((rB-RS.S)/rB*100>=25)?'o':'r')):'g',
+      eB=Math.round(sum(PE_CATS,function(k){return num(D.env[k])})*100)/100,eS=Math.round(sum(PE_CATS.filter(function(k){return num(D.env[k])>0}),function(k){return by[k]||0})*100)/100,
+      ek=eB>0?(((eB-eS)/eB*100>=75)?'g':(((eB-eS)/eB*100>=25)?'o':'r')):'g';
+    h+='<div class="rings">'+ringTile('Charges fixes',fp,fk,'pfix',unpaid,fix,'sur')+
+      ringTile('Ticket-resto',rB>0?RS.S/rB*100:0,rk,'pdep',rB>0?RS.left:(upd&&upd.balance!=null?upd.balance:0),rB,'sur','',rB>0?null:(upd&&upd.balance!=null?'Solde carte':'Budget non défini'))+
+      ringTile('Enveloppes',eB>0?eS/eB*100:0,ek,'pdep',eB>0?eB-eS:vr,eB,'sur','',eB>0?null:'Dépenses · sans plafond')+'</div>';
     var FY=peFoy(),due=FY.due,pafS=Math.round(foyP*100)/100,gap=Math.round((due-pafS)*100)/100,gap2=Math.round((FY.got-pafS)*100)/100,fl=deb.filter(function(t){return peIsF(peCat(t))}),
       R=function(l,v,cls){return '<div class="line"><span>'+l+'</span><span class="n '+(cls||'')+'">'+v+'</span></div>'},
       G=function(g){return Math.abs(g)<0.015?'0,00 €':sgn(g)};
     h+=(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
       '<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('Attendue (onglet PAF du foyer)',fmt(due))+'<div class="small muted" style="margin:-2px 0 6px">1er du mois '+fmt(FY.first)+' · le 10 '+fmt(FY.second)+(FY.known?'':' · revenus non renseignés (50/50)')+'</div>'+R('Virée depuis la SG',fmt(pafS))+
       R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+'</section>'+
-      '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+peOthCard(FY,Math.round((foyC+foyE)*100)/100)+
-      '<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
+      '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+peOthCard(FY,Math.round((foyC+foyE)*100)/100);
+    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,pafLeft:pafLeft,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
+    h+=peSecCompte(st,vu,days,warn);
+  }else if(sub==='dep'){
+    var fl=deb.filter(function(t){return peIsF(peCat(t))});
+    h+=peRestoSec()+peEnvSec(by);
+    var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
+    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
+      return '<div class="pop"><div class="pop1"><span class="nm">'+(pend?'<i class="pdot" title="À valider"></i>':'')+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
+        '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
+        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div>'+(t.amount<0?'<div class="pop2">'+peRelSel(t)+'</div>':'')+'</div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
+    h+='<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
   }else{
-    h+='<section class="card"><h2>Connexion Société Générale</h2>';
-    if(!st)h+='<div class="small muted">Chargement…</div>';
-    else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
-    else h+='<div class="line" style="border:0"><span>'+esc((st.accounts[0]&&st.accounts[0].iban)||'Compte relié')+'</span><span class="n small '+(warn?'neg':'pos')+'">'+(st.expired?'Consentement expiré':(vu?'jusqu’au '+vu.toLocaleDateString('fr-FR')+' ('+days+' j)':'actif'))+'</span></div><div class="brow"><button class="btn'+(warn?' primary':'')+'" data-pe="connect">Renouveler le consentement</button></div>';
-    h+='</section><section class="card"><h2>Cet appareil</h2><p class="small muted" style="margin:0 0 10px">Efface le mot de passe perso mémorisé ici. Les données restent sur le serveur.</p><div class="brow"><button class="btn" data-pe="lock">Verrouiller cet appareil</button></div></section>';
+    var D=pe.doc.data;
+    var fxl=deb.filter(function(t){var c=peCat(t);return c==='Fixe'||c==='Abonnements'||peIsF(c)}).sort(function(x,y){return peCat(x).localeCompare(peCat(y))});
+    h+='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
+      '<div class="grp"><b>Prévus (saisis)'+(rcv.length?' · ignorés tant que des revenus sont reçus':'')+'</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu saisi.</div>')+'</section>'+
+      adOpen('peinc','Ajouter un revenu prévu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
+    var FMf=peFixMap(),act=D.fixed.filter(function(x){return !D.off[ym+':'+x.id]}),isP=function(x){return !!D.paid[ym+':'+x.id]||!!FMf[x.id]},
+      totF=Math.round(sum(act,function(x){return num(x.amount)})*100)/100,leftF=Math.round(sum(act.filter(function(x){return !isP(x)}),function(x){return num(x.amount)})*100)/100,
+      rowsF=D.fixed.map(function(x,i){var kk=ym+':'+x.id,off=!!D.off[kk],hit=FMf[x.id],pd=isP(x);
+        return '<div class="line'+(off?' is-off':'')+'"><span class="t tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span class="nm"><b>'+(off?'⊘':(pd?'☑':'☐'))+' '+esc(x.label)+'</b></span><span class="tags">'+(off?'<span class="tag">Exclu</span>':(hit?'<span class="tag">SG · '+esc(String(hit.date||'').slice(5).split('-').reverse().join('/'))+'</span>':(pd?'<span class="tag">payé</span>':'')))+'</span></span>'+
+          '<span class="n">'+fmt(x.amount)+' <button class="x" data-pe="fmv" data-d="-1" data-id="'+x.id+'" aria-label="Monter"'+(i===0?' disabled':'')+'>▲</button><button class="x" data-pe="fmv" data-d="1" data-id="'+x.id+'" aria-label="Descendre"'+(i===D.fixed.length-1?' disabled':'')+'>▼</button><button class="x" data-pe="foff" data-id="'+x.id+'" aria-label="Exclure ou réintégrer ce mois">⊘</button><button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''),
+      orph=deb.filter(function(t){var c=peCat(t);return (c==='Fixe'||c==='Abonnements')&&!Object.keys(FMf).some(function(q){return FMf[q].id===t.id})});
+    h+='<section class="card"><h2>Charges fixes · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin:-4px 0 8px">'+act.filter(isP).length+' / '+act.length+' réglées · reste '+fmt(leftF)+' sur '+fmt(totF)+' · reprises chaque mois · ⊘ = exclure ce mois-ci</div>'+(rowsF||'<div class="empty">Aucune charge saisie.</div>')+'</section>'+
+      adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+      (orph.length?'<section class="card"><h2>Prélèvements sans charge prévue</h2><div class="small muted" style="margin:-4px 0 8px">Opérations taguées Fixe / Abonnements qui ne correspondent à aucune ligne ci-dessus.</div>'+orph.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join('')+'</section>':'');
+
   }
   return h}
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-pe]');if(!t)return;var a=t.dataset.pe,D=pe.doc.data;
-  if(a==='sub'){pe.sub=t.dataset.v;render();window.scrollTo(0,0);return}
+  if(a==='sub'){state.tab=(t.dataset.v==='ops'?'pdep':'perso');render();window.scrollTo(0,0);return}
   if(a==='ok'||a==='okall'){var ids=a==='ok'?[t.dataset.id]:peMonth().filter(function(x){return !D.tx[x.id]&&!peRuled(x)}).map(function(x){return x.id});
     ids.forEach(function(id){var x=(pe.tx||[]).filter(function(y){return y.id===id})[0];if(!x)return;var c=peCat(x);D.tx[id]={cat:c};var k=peKey(x.label);if(k&&!D.rules[k])D.rules[k]=c});peSave();return}
   if(a==='connect'){pe.busy=true;render();peCall('/perso/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url)window.location.href=x.d.url;else{pe.busy=false;pe.msg='Connexion impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(peFail)}
@@ -2060,15 +2119,29 @@ document.addEventListener('click',function(e){
   else if(a==='delinc'){D.incomes=D.incomes.filter(function(x){return x.id!==t.dataset.id});peSave()}
   else if(a==='delfix'){e.stopPropagation();D.fixed=D.fixed.filter(function(x){return x.id!==t.dataset.id});peSave()}
   else if(a==='tgl'){if(e.target.closest('[data-pe="delfix"]'))return;var k=ym+':'+t.dataset.id;if(D.paid[k])delete D.paid[k];else D.paid[k]=1;peSave()}
+  else if(a==='foff'){var ko=ym+':'+t.dataset.id;if(D.off[ko])delete D.off[ko];else D.off[ko]=1;peSave()}
+  else if(a==='fmv'){var fid=t.dataset.id,fi=-1;D.fixed.forEach(function(x,j){if(x.id===fid)fi=j});var fj=fi+(+t.dataset.d);if(fi>=0&&fj>=0&&fj<D.fixed.length){var ft=D.fixed[fi];D.fixed[fi]=D.fixed[fj];D.fixed[fj]=ft;peSave()}}
+  else if(a==='upp'){var uu=t.dataset.uid,tt=upList().filter(function(x){return x.uid===uu})[0];if(!tt)return;var on=!D.up[uu];if(on)D.up[uu]=1;else delete D.up[uu];peUpMark(tt,on);peSave()}
 });
 document.addEventListener('change',function(e){
-  var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data,id=s.dataset.pecat;D.tx[id]={cat:s.value};var t=(pe.tx||[]).filter(function(x){return x.id===id})[0],k=t&&peKey(t.label);if(k)D.rules[k]=s.value;peSave()});
+  var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data,id=s.dataset.pecat,o0=D.tx[id];D.tx[id]={cat:s.value};if(o0&&o0.link)D.tx[id].link=o0.link;var t=(pe.tx||[]).filter(function(x){return x.id===id})[0],k=t&&peKey(t.label);if(k)D.rules[k]=s.value;peSave()});
+document.addEventListener('change',function(e){
+  var s=e.target.closest('[data-perel]');if(!s)return;var D=pe.doc.data,id=s.dataset.perel,v=s.value,t=(pe.tx||[]).filter(function(x){return x.id===id})[0];if(!t)return;
+  var o=D.tx[id]||{cat:peCat(t)},cfg=false;
+  if(o.link&&o.link.k==='adv'){var N0=nsd();N0.ledger=N0.ledger.filter(function(x){return x.id!==o.link.id});N0.del=N0.del.concat([o.link.id]).slice(-500);cfg=true}
+  delete o.link;
+  if(v.indexOf('fix:')===0){o.cat='Fixe';o.link={k:'fix',id:v.slice(4)}}
+  else if(v==='adv'){var lid=uid();nsd().ledger.push({id:lid,label:String(t.label||'Avance').slice(0,48),date:String(t.date||'').slice(0,10),amount:Math.round(Math.abs(t.amount)/2*100)/100,by:'h',owe:'l',done:false,nb:1});o.link={k:'adv',id:lid};cfg=true}
+  D.tx[id]=o;
+  if(cfg){nsSync();resetVirt();touch('config')}
+  peSave()});
 document.addEventListener('submit',function(e){
   var f=e.target.closest('[data-peform]');if(!f)return;e.preventDefault();var k=f.dataset.peform,fd=new FormData(f),D=pe.doc.data;
   if(k==='unlock'){pe.key=String(fd.get('password')||'');try{localStorage.setItem('budget-perso-key',pe.key)}catch(x){}pe.loaded=true;pe.msg='';peLoad();return}
   var label=String(fd.get('label')||'').trim().slice(0,48),amount=num(fd.get('amount'));
   if(k==='inc'&&label&&amount>0){D.incomes.push({id:uid(),label:label,amount:amount});peSave()}
   else if(k==='fix'&&label&&amount>0){D.fixed.push({id:uid(),label:label,amount:amount});peSave()}
+  else if(k==='rest'){var rv=num(fd.get('budget'));if(rv>0)D.env['Ticket-resto']=rv;else delete D.env['Ticket-resto'];peSave()}
   else if(k==='env'){PE_CATS.forEach(function(c){var v=num(fd.get('e_'+c));if(v>0)D.env[c]=v;else delete D.env[c]});peSave()}
 });
 loadLocal();applySeed();applyModel();bankFix1();migCourses();applyInc();migModel();try{nsSync()}catch(e){}
