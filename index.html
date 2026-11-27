@@ -339,6 +339,17 @@ body{padding-bottom:28px}
 .fxb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
 .fxb button{min-width:36px;height:32px;padding:0 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;font-size:14px;line-height:1;cursor:pointer}
 .fxb button:disabled{opacity:.35}
+.pdt{display:flex;justify-content:space-between;align-items:center;width:100%;margin:6px 0 12px;padding:13px 16px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:16px;font:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.pdt .pdc{font-size:15px}
+.opr{padding:11px 0;border-top:1px solid var(--line)}.opr:first-of-type{border-top:0}
+.oph{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.opn{font-weight:600;font-size:15px;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.opa{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
+.opm{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:5px;font-size:12px;color:var(--muted)}
+.opc{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:99px;padding:4px 11px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.opc.pend{border-color:var(--warn);color:var(--warn)}.opc.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ope{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;padding:10px;border-radius:12px;background:var(--surface)}
+.ope{align-items:center}.ope select{flex:1 1 140px;min-width:0}.ope .btn{height:auto;padding:8px 12px;flex:0 0 auto}
 
 .pseg{display:flex;gap:4px;margin:0 0 12px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-x:auto}.pseg button{flex:1;white-space:nowrap;font:inherit;font-size:13px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}.pseg button[aria-selected=true]{background:var(--accent);color:#fff;font-weight:600}
 .phead{display:flex;align-items:center;justify-content:space-between;gap:12px}.phead .btn{flex:0 0 auto}
@@ -1929,6 +1940,7 @@ function peAgg(m){var D=pe.doc.data,T=(pe.tx||[]).filter(function(t){return !t.p
 function peBars(vals,cur,goodUp){var mx=0;vals.forEach(function(v){mx=Math.max(mx,Math.abs(v))});mx=mx||1;var W=100/vals.length;
   return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:46px;display:block" aria-hidden="true">'+vals.map(function(v,i){var h=Math.max(1.5,Math.abs(v)/mx*30),neg=v<0,i2=i===vals.length-1,c=(goodUp===undefined)?(neg?'var(--bad)':'var(--good)'):'var(--accent)';
     return '<rect x="'+(i*W+W*0.18).toFixed(2)+'" y="'+(33-h).toFixed(2)+'" width="'+(W*0.64).toFixed(2)+'" height="'+h.toFixed(2)+'" rx="1.2" fill="'+c+'" opacity="'+(i2?1:0.42)+'"/>'}).join('')+'</svg>'}
+function peDet(inner,key,title){pe.det=pe.det||{};var o=!!pe.det[key];return '<button type="button" class="pdt" data-pdet="'+key+'" aria-expanded="'+(o?'true':'false')+'"><span>'+title+'</span><span class="pdc">'+(o?'▾':'▸')+'</span></button>'+(o?inner:'')}
 function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return ymLabel(m).slice(0,4)},
   prev=peAgg(shiftYm(ym,-1)),used=Math.round((c.fix+c.foy+c.vr+c.pafLeft)*100)/100,pct=c.inc>0?Math.min(999,Math.round(used/c.inc*100)):0,
   today=new Date().toISOString().slice(0,10),from=c.PP.from,end=c.PP.to||(function(){var d=new Date(from+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)})(),
@@ -1937,17 +1949,18 @@ function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return 
   /* alertes */
   var AL=[];
   Object.keys(c.by).forEach(function(k){var b=num(c.D.env[k]),sp=c.by[k];if(b>0&&sp>b)AL.push(['bad','Enveloppe '+k+' dépassée de '+fe(Math.round((sp-b)*100)/100)])});
-  var FY=peFoy(),gp=Math.round((FY.due-c.foyP)*100)/100;if(FY.has&&(c.foyP>0||live)&&Math.abs(gp)>=0.015&&FY.due>0)AL.push(['warn','PAF : écart de '+sgn(-gp)+' entre la SG et l’attendu']);
-  if(c.reste<0)AL.push(['bad','Reste à vivre négatif : '+fe(c.reste)]);
+  var FY=peFoy(),gp=Math.round((FY.due-c.foyP)*100)/100;if(FY.has&&(c.foyP>0||live)&&Math.abs(gp)>=0.015&&FY.due>0&&0)AL.push(['warn','PAF']);
   if(pe.bal&&pe.bal.amount<100)AL.push(['warn','Solde SG bas : '+fe(pe.bal.amount)]);
   if(c.todo)AL.push(['info',c.todo+' opération'+(c.todo>1?'s':'')+' à valider <button class="btn mini lnk" data-pe="sub" data-v="ops">Classer</button>']);
-  if(AL.length)h+='<div class="pd-al">'+AL.map(function(a){return '<div class="pd-a pd-'+a[0]+'"><i></i><span>'+a[1]+'</span></div>'}).join('')+'</div>';
+  var al='';if(AL.length)h+='<div class="pd-al">'+AL.map(function(a){return '<div class="pd-a pd-'+a[0]+'"><i></i><span>'+a[1]+'</span></div>'}).join('')+'</div>';
+  al=h;h='';
   /* hero */
   h+='<section class="card pd-hero"><div class="small muted">Reste à vivre · '+esc(ymLabel(ym))+'</div><div class="big '+(c.reste<0?'neg':'pos')+'" style="font-size:34px">'+fe(c.reste)+'</div>'+
     '<div class="pd-gauge"><div class="bar'+(pct>100?' over':'')+'"><i style="width:'+Math.min(100,pct)+'%"></i></div><div class="small muted" style="margin-top:4px">'+pct+' % des revenus consommés · '+fe(used)+' sur '+fe(c.inc)+'</div></div>'+
     (c.pafLeft>0?'<div class="small" style="margin-top:6px;color:var(--warn)">Déduit : '+fe(c.pafLeft)+' de PAF pas encore virée (attendue '+fe(c.FY.due)+' · virée '+fe(c.foyP)+')</div>':'')+
     '<div class="small muted" style="margin-top:6px">Période : du '+esc(c.PP.from.split('-').reverse().join('/'))+(c.PP.auto?' (1er salaire)':'')+' au '+(c.PP.to?esc(c.PP.to.split('-').reverse().join('/')):'prochain salaire')+'</div>'+
     (live&&left>0?'<div class="pd-pace"><div><b>'+(c.reste>0?fe(Math.round(c.reste/left*100)/100):'0,00 €')+'</b><span>possibles / jour</span></div><div><b>'+left+' j</b><span>restants</span></div><div><b>'+fe(Math.round(c.vr/Math.max(1,elapsed)*100)/100)+'</b><span>dépensés / jour</span></div></div>':'')+'</section>';
+  var hero=h;h='';
   /* KPI */
   var K=[['Revenus',c.inc,prev.has?prev.inc:null,1],['Charges fixes',c.fix,prev.has?prev.fix:null,0],['Virement foyer',c.foy,prev.has?prev.foy:null,0],['Dépenses',c.vr,prev.has?prev.vr:null,0]];
   h+='<div class="pd-kpis">'+K.map(function(k){var d=k[2]==null?null:Math.round((k[1]-k[2])*100)/100,good=d==null?null:(k[3]?d>=0:d<=0);
@@ -1974,7 +1987,7 @@ function peDash(c){var h='',fe=function(v){return fmt(v)},ML=function(m){return 
   /* top 5 */
   var tp=c.deb.filter(function(t){var k=peCat(t);return !peIsF(k)&&k!=='Fixe'&&k!=='Abonnements'&&k!=='Ignorer'&&k!=='Revenu'}).sort(function(a,b){return a.amount-b.amount}).slice(0,5);
   h+='<section class="card"><h2>Top 5 dépenses variables</h2>'+(tp.length?tp.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join(''):'<div class="empty">Aucune dépense.</div>')+'</section>';
-  return h}
+  return {al:al,hero:hero,det:h}}
 function peTile(st,T,days,warn){
   var b=pe.bal&&pe.bal.amount!=null?+pe.bal.amount:null,tx=(pe.tx||[]).filter(function(t){return !t.pending}),today=new Date().toISOString().slice(0,10),
     iban=(st&&st.accounts&&st.accounts[0]&&st.accounts[0].iban)||'',last=iban?String(iban).slice(-4):'',
@@ -2085,34 +2098,36 @@ function vPerso(M){
       RS=peRestoStat(),rB=RS.B,rk=rB>0?(((rB-RS.S)/rB*100>=75)?'g':(((rB-RS.S)/rB*100>=25)?'o':'r')):'g',
       eB=Math.round(sum(PE_CATS,function(k){return num(D.env[k])})*100)/100,eS=Math.round(sum(PE_CATS.filter(function(k){return num(D.env[k])>0}),function(k){return by[k]||0})*100)/100,
       ek=eB>0?(((eB-eS)/eB*100>=75)?'g':(((eB-eS)/eB*100>=25)?'o':'r')):'g';
-    h+='<div class="rings">'+ringTile('Charges fixes',fp,fk,'pfix',unpaid,fixR,'sur')+
+    var RINGS='<div class="rings">'+ringTile('Charges fixes',fp,fk,'pfix',unpaid,fixR,'sur')+
       ringTile('Ticket-resto',rB>0?RS.S/rB*100:0,rk,'pdep',rB>0?RS.left:(upd&&upd.balance!=null?upd.balance:0),rB,'sur','',rB>0?null:(upd&&upd.balance!=null?'Solde carte':'Budget non défini'))+
       ringTile('Enveloppes',eB>0?eS/eB*100:0,ek,'pdep',eB>0?eB-eS:vr,eB,'sur','',eB>0?null:'Dépenses · sans plafond')+'</div>';
     var FY=peFoy(),due=FY.due,pafS=Math.round(foyP*100)/100,gap=Math.round((due-pafS)*100)/100,gap2=Math.round((FY.got-pafS)*100)/100,fl=deb.filter(function(t){return peIsF(peCat(t))}),
       R=function(l,v,cls){return '<div class="line"><span>'+l+'</span><span class="n '+(cls||'')+'">'+v+'</span></div>'},
       G=function(g){return Math.abs(g)<0.015?'0,00 €':sgn(g)};
-    h+=(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
+    var PD=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,pafLeft:pafLeft,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
+    var OTH='<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>';
+    h+=PD.hero+PD.al+RINGS+(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
       '<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('Attendue (onglet PAF du foyer)',fmt(due))+'<div class="small muted" style="margin:-2px 0 6px">1er du mois '+fmt(FY.first)+' · le 10 '+fmt(FY.second)+(FY.known?'':' · revenus non renseignés (50/50)')+'</div>'+R('Virée depuis la SG',fmt(pafS))+
-      R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+'</section>'+
-      '<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>'+peOthCard(FY,Math.round((foyC+foyE)*100)/100);
-    h+=peDash({inc:inc,fix:fix,foy:foy,vr:vr,reste:reste,pafLeft:pafLeft,by:by,deb:deb,todo:todo,foyP:foyP,PP:PP,D:D,FY:peFoy(),foyCE:Math.round((foyC+foyE)*100)/100});
-    h+=peSecCompte(st,vu,days,warn);
+      R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+'</section>';
+    h+=peDet(OTH+PD.det,'det','Détails du mois');
+    h+=peDet(peSecCompte(st,vu,days,warn),'cpt','Compte & connexion');
   }else if(sub==='dep'){
     var fl=deb.filter(function(t){return peIsF(peCat(t))});
     h+=peRestoSec()+peEnvSec(by);
     var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
-    var OPS=T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
-      return '<div class="pop"><div class="pop1"><span class="nm">'+(pend?'<i class="pdot" title="À valider"></i>':'')+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
-        '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
-        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div>'+(t.amount<0?'<div class="pop2">'+peRelSel(t)+'</div>':'')+'</div>'}).map(function(x,i){return [String(T[i].date||''),x]});
-    peRestoStat().L.forEach(function(t){var on=!!pe.doc.data.up[t.uid];OPS.push([t.date,'<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label)+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date).slice(5).split('-').reverse().join('/'))+' · Ticket-resto'+(on?' · Hasina':' · Fortuneo')+'</span><button type="button" class="btn mini'+(on?' primary':'')+'" data-pe="upp" data-uid="'+esc(t.uid)+'">'+(on?'Hasina ✓':'Hasina')+'</button></div></div>'])});
+    var OPS=T.map(function(t){var c=peCat(t),o0=pe.doc.data.tx[t.id],man=!!o0,pend=!man&&!peRuled(t),open=pe.opx===t.id,lk=o0&&o0.link,
+        info=lk?(lk.k==='fix'?' · charge fixe':' · avance'):'';
+      return [String(t.date||''),'<div class="opr"><div class="oph"><span class="opn">'+esc(t.label||'')+'</span><span class="opa '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
+        '<div class="opm"><span>'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+esc(info)+'</span><button type="button" class="opc'+(pend?' pend':'')+'" data-pe="opx" data-id="'+esc(t.id)+'">'+esc(c)+(pend?' · à valider':'')+' ▾</button></div>'+
+        (open?'<div class="ope"><select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'">✓ Valider</button>':'')+(t.amount<0?peRelSel(t):'')+'</div>':'')+'</div>']});
+    peRestoStat().L.forEach(function(t){var on=!!pe.doc.data.up[t.uid];OPS.push([t.date,'<div class="opr"><div class="oph"><span class="opn">'+esc(t.label)+'</span><span class="opa neg">'+fmt(t.amount)+'</span></div><div class="opm"><span>'+esc(String(t.date).slice(5).split('-').reverse().join('/'))+' · Ticket-resto</span><button type="button" class="opc'+(on?' on':'')+'" data-pe="upp" data-uid="'+esc(t.uid)+'">'+(on?'Hasina ✓':'Hasina')+'</button></div></div>'])});
     OPS.sort(function(x,y){return x[0]<y[0]?1:(x[0]>y[0]?-1:0)});
     h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(OPS.length?OPS.map(function(o){return o[1]}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
-    h+='<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
+    h+=peDet('<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>','vir','Détail des virements');
   }else{
     var D=pe.doc.data;
     var fxl=deb.filter(function(t){var c=peCat(t);return c==='Fixe'||c==='Abonnements'||peIsF(c)}).sort(function(x,y){return peCat(x).localeCompare(peCat(y))});
-    h+='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
+    var REV='<section class="card"><h2>Revenus · '+esc(ymLabel(ym))+'</h2>'+(rcv.length?'<div class="grp"><b>Reçus (libellé STYX)</b></div>'+rcv.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(t.date||'')+'</span></span></span><span class="n pos">'+fmt(t.amount)+'</span></div>'}).join(''):'')+
       '<div class="grp"><b>Prévus (saisis)'+(rcv.length?' · ignorés tant que des revenus sont reçus':'')+'</b></div>'+(D.incomes.length?D.incomes.map(function(x){return '<div class="line"><span>'+esc(x.label)+'</span><span class="n">'+fmt(x.amount)+' <button class="x" data-pe="delinc" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''):'<div class="empty">Aucun revenu saisi.</div>')+'</section>'+
       adOpen('peinc','Ajouter un revenu prévu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
     var FYf=peFoy(),pafD=(FYf.has&&FYf.due>0)?FYf.due:0,pafOk=pafD>0&&foyP>=pafD-0.015,pafL=pafD>0?Math.max(0,Math.round((pafD-foyP)*100)/100):0,
@@ -2127,14 +2142,14 @@ function vPerso(M){
     h+='<section class="card"><h2>Charges fixes · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin:-4px 0 8px">'+(act.filter(isP).length+(pafOk?1:0))+' / '+(act.length+(pafD>0?1:0))+' réglées · reste '+fmt(leftF)+' sur '+fmt(totF)+' · reprises chaque mois · ⊘ = exclure ce mois-ci</div>'+pafRow+(rowsF||(pafRow?'':'<div class="empty">Aucune charge saisie.</div>'))+'</section>'+
       adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><label class="small muted full" style="display:block">Dernier mois (vide = sans fin)<input type="month" name="to" aria-label="Dernier mois"></label><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
       (orph.length?'<section class="card"><h2>Prélèvements sans charge prévue</h2><div class="small muted" style="margin:-4px 0 8px">Opérations taguées Fixe / Abonnements qui ne correspondent à aucune ligne ci-dessus.</div>'+orph.map(function(t){return '<div class="fxr"><div class="fxh"><span class="fxn">'+esc(t.label||'')+'</span><span class="fxa neg">'+fmt(t.amount)+'</span></div><div class="fxm">'+esc(peCat(t))+' · '+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</div><div class="fxb"><button data-pe="mkfix" data-id="'+esc(t.id)+'">＋ Charge fixe</button></div></div>'}).join('')+'</section>':'');
-
+    h+=peDet(REV,'rev','Revenus du mois');
   }
   return h}
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-pe]');if(!t)return;var a=t.dataset.pe,D=pe.doc.data;
   if(a==='sub'){state.tab=(t.dataset.v==='ops'?'pdep':'perso');render();window.scrollTo(0,0);return}
   if(a==='ok'||a==='okall'){var ids=a==='ok'?[t.dataset.id]:peMonth().filter(function(x){return !D.tx[x.id]&&!peRuled(x)}).map(function(x){return x.id});
-    ids.forEach(function(id){var x=(pe.tx||[]).filter(function(y){return y.id===id})[0];if(!x)return;var c=peCat(x);D.tx[id]={cat:c};var k=peKey(x.label);if(k&&!D.rules[k])D.rules[k]=c});peSave();return}
+    ids.forEach(function(id){var x=(pe.tx||[]).filter(function(y){return y.id===id})[0];if(!x)return;var c=peCat(x);D.tx[id]={cat:c};var k=peKey(x.label);if(k&&!D.rules[k])D.rules[k]=c});if(a==='ok')pe.opx=null;peSave();return}
   if(a==='connect'){pe.busy=true;render();peCall('/perso/connect',{method:'POST'}).then(function(x){if(x.ok&&x.d.url)window.location.href=x.d.url;else{pe.busy=false;pe.msg='Connexion impossible ('+(x.d&&x.d.error||x.status)+').';render()}}).catch(peFail)}
   else if(a==='refresh')peTx(true);
   else if(a==='lock'){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.loaded=false;try{localStorage.removeItem('budget-perso-key')}catch(x){}render()}
@@ -2148,12 +2163,14 @@ document.addEventListener('click',function(e){
   else if(a==='frn'){var fr=D.fixed.filter(function(x){return x.id===t.dataset.id})[0];if(!fr)return;var nn=prompt('Nouveau nom de la charge :',fr.label);if(nn===null)return;nn=nn.trim().slice(0,48);if(!nn)return;fr.label=nn;peSave()}
   else if(a==='fend'){var fx=D.fixed.filter(function(x){return x.id===t.dataset.id})[0];if(!fx)return;var r2=prompt('Dernier mois (AAAA-MM).\nLaisse vide = sans fin.',fx.to||'');if(r2===null)return;r2=r2.trim();
     if(r2&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(r2)){alert('Format attendu : AAAA-MM (ex. 2027-03).');return}if(r2)fx.to=r2;else delete fx.to;peSave()}
+  else if(a==='opx'){pe.opx=(pe.opx===t.dataset.id)?null:t.dataset.id;render()}
   else if(a==='foff'){var ko=ym+':'+t.dataset.id;if(D.off[ko])delete D.off[ko];else D.off[ko]=1;peSave()}
   else if(a==='fmv'){var fid=t.dataset.id,FA=peFxIn(),ia=-1;FA.forEach(function(x,j){if(x.id===fid)ia=j});var nb=FA[ia+(+t.dataset.d)];if(ia>=0&&nb){var fi=-1,fj=-1;D.fixed.forEach(function(x,j){if(x.id===fid)fi=j;if(x.id===nb.id)fj=j});var ft=D.fixed[fi];D.fixed[fi]=D.fixed[fj];D.fixed[fj]=ft;peSave()}}
   else if(a==='upp'){var uu=t.dataset.uid,tt=upList().filter(function(x){return x.uid===uu})[0];if(!tt)return;var on=!D.up[uu];if(on)D.up[uu]=1;else delete D.up[uu];peUpMark(tt,on);peSave()}
 });
 document.addEventListener('change',function(e){
   var s=e.target.closest('[data-pecat]');if(!s)return;var D=pe.doc.data,id=s.dataset.pecat,o0=D.tx[id];D.tx[id]={cat:s.value};if(o0&&o0.link)D.tx[id].link=o0.link;var t=(pe.tx||[]).filter(function(x){return x.id===id})[0],k=t&&peKey(t.label);if(k)D.rules[k]=s.value;peSave()});
+document.addEventListener('click',function(e){var b=e.target.closest('[data-pdet]');if(!b)return;pe.det=pe.det||{};pe.det[b.dataset.pdet]=!pe.det[b.dataset.pdet];render()});
 document.addEventListener('change',function(e){
   var s=e.target.closest('[data-perel]');if(!s)return;var D=pe.doc.data,id=s.dataset.perel,v=s.value,t=(pe.tx||[]).filter(function(x){return x.id===id})[0];if(!t)return;
   var o=D.tx[id]||{cat:peCat(t)},cfg=false;
