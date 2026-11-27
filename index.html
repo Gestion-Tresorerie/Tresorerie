@@ -1666,7 +1666,7 @@ document.addEventListener('click',function(e){
   else if(a==='next'){ym=shiftYm(ym,1);render()}
   else if(a==='goto'){ym=t.dataset.ym;state.tab='synthese';render();window.scrollTo(0,0)}
   else if(a==='sync'){doSync()}
-  else if(a==='tab'){state.tab=t.dataset.tab;render();window.scrollTo(0,0)}
+  else if(a==='tab'){pe.navd=true;state.tab=t.dataset.tab;render();window.scrollTo(0,0)}
   else if(a==='del'){
     var mk=t.dataset.from||ym,m=editM(mk),l=t.dataset.list;
     var gone=m[l].filter(function(x){return x.id===t.dataset.id})[0];if(gone)m.del=(m.del||[]).concat([syKey(gone,l)]).slice(-300);
@@ -1883,6 +1883,7 @@ function peTx(force){
 function peWipe(){pe.key=null;pe.st=null;pe.tx=null;pe.bal=null;pe.fetched=null;pe.loaded=false;pe.msg='';try{localStorage.removeItem('budget-perso-key');localStorage.removeItem('budget-perso-v1');localStorage.removeItem('budget-perso-sync')}catch(e){}pe.doc=peFix({ts:0,data:{}})}
 function peVisible(){return !!(bank.st&&bank.st.user==='hasina')}
 function pePaint(){var v=peVisible();if(bank.st&&!v&&(pe.key||pe.doc.ts))peWipe();['persoBtn','pfixBtn','pdepBtn'].forEach(function(i){var b=document.getElementById(i);if(b)b.hidden=!v});
+  if(v&&!pe.homed){pe.homed=true;var hm='';try{hm=localStorage.getItem('budget-home-tab')||''}catch(x){}if(hm==='perso'&&!pe.navd&&state.tab==='synthese'){state.tab='perso';render()}}
   if(v&&pe.key&&!pe.loaded){pe.loaded=true;setTimeout(peLoad,0)}}
 function peIncDates(){if(pe._idk===pe.tx)return pe._idd;var o={};(pe.tx||[]).forEach(function(t){if(t.amount>0&&/STYX|SIMPLICITI/i.test(String(t.label||'')))o[String(t.date||'').slice(0,10)]=1});pe._idk=pe.tx;pe._idd=o;return o}
 function peDayShift(d,k){var x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+k);return x.toISOString().slice(0,10)}
@@ -2066,7 +2067,8 @@ function peEnvSec(by){var D=pe.doc.data,rows=PE_CATS.filter(function(k){return n
   return '<section class="card"><h2>Enveloppes · '+esc(ymLabel(ym))+'</h2>'+(rows.length?'<div class="pd-cat">'+rows.map(function(r){var env=r[2]>0,o=env&&r[1]>r[2],w=env&&r[1]>=r[2]*0.8&&!o,col=o?'var(--bad)':(w?'var(--warn)':'var(--accent)');
     return '<div class="pd-cr"><span class="pd-cn">'+esc(r[0])+'</span><span class="pd-cb"><i style="width:'+Math.min(100,r[1]/sc*100).toFixed(1)+'%;background:'+col+'"></i>'+(env?'<u style="left:'+Math.min(100,r[2]/sc*100).toFixed(1)+'%"></u>':'')+'</span><span class="pd-cv'+(o?' neg':'')+'">'+Math.round(r[1])+(env?'<small> / '+Math.round(r[2])+'</small>':'')+'</span></div>'}).join('')+'</div>':'<div class="empty">Aucune dépense ni plafond ce mois-ci.</div>')+'</section>'+
   adOpen('peenv','Plafonds par catégorie')+'<form class="form" data-peform="env">'+PE_CATS.map(function(c){return '<label class="small muted" style="display:block">'+esc(c)+'<input type="text" name="e_'+esc(c)+'" inputmode="decimal" value="'+(num(D.env[c])?inp(num(D.env[c])):'')+'" placeholder="Budget mensuel" aria-label="Budget '+esc(c)+'"></label>'}).join('')+'<button class="btn primary add" type="submit">Enregistrer</button></form></div></section>'}
-function peSecCompte(st,vu,days,warn){var h='';
+function peSecCompte(st,vu,days,warn){var h='',hm='';try{hm=localStorage.getItem('budget-home-tab')||''}catch(x){}
+    h+='<section class="card"><h2>Ouverture de l’app</h2><div class="line" style="border:0"><span>Ouvrir sur « Perso - Synthèse » (cet appareil)</span><button class="btn'+(hm==='perso'?' primary':'')+'" data-pe="home">'+(hm==='perso'?'Oui':'Non')+'</button></div></section>';
     h+='<section class="card"><h2>Connexion Société Générale</h2>';
     if(!st)h+='<div class="small muted">Chargement…</div>';
     else if(!st.linked)h+='<p class="small muted" style="margin:0 0 10px">Aucun compte relié. Tu seras redirigé vers ta banque pour autoriser la lecture des opérations.</p><button class="btn primary" style="width:100%" data-pe="connect"'+(pe.busy?' disabled':'')+'>Connecter la Société Générale</button>';
@@ -2163,6 +2165,7 @@ document.addEventListener('click',function(e){
   else if(a==='frn'){var fr=D.fixed.filter(function(x){return x.id===t.dataset.id})[0];if(!fr)return;var nn=prompt('Nouveau nom de la charge :',fr.label);if(nn===null)return;nn=nn.trim().slice(0,48);if(!nn)return;fr.label=nn;peSave()}
   else if(a==='fend'){var fx=D.fixed.filter(function(x){return x.id===t.dataset.id})[0];if(!fx)return;var r2=prompt('Dernier mois (AAAA-MM).\nLaisse vide = sans fin.',fx.to||'');if(r2===null)return;r2=r2.trim();
     if(r2&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(r2)){alert('Format attendu : AAAA-MM (ex. 2027-03).');return}if(r2)fx.to=r2;else delete fx.to;peSave()}
+  else if(a==='home'){var h0='';try{h0=localStorage.getItem('budget-home-tab')||''}catch(x){}try{if(h0==='perso')localStorage.removeItem('budget-home-tab');else localStorage.setItem('budget-home-tab','perso')}catch(x){}render()}
   else if(a==='opx'){pe.opx=(pe.opx===t.dataset.id)?null:t.dataset.id;render()}
   else if(a==='foff'){var ko=ym+':'+t.dataset.id;if(D.off[ko])delete D.off[ko];else D.off[ko]=1;peSave()}
   else if(a==='fmv'){var fid=t.dataset.id,FA=peFxIn(),ia=-1;FA.forEach(function(x,j){if(x.id===fid)ia=j});var nb=FA[ia+(+t.dataset.d)];if(ia>=0&&nb){var fi=-1,fj=-1;D.fixed.forEach(function(x,j){if(x.id===fid)fi=j;if(x.id===nb.id)fj=j});var ft=D.fixed[fi];D.fixed[fi]=D.fixed[fj];D.fixed[fj]=ft;peSave()}}
