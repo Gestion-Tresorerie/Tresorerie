@@ -1914,7 +1914,7 @@ function peSegs(){var L=[['apercu','Aperçu'],['ops','Opérations'],['budget','B
 function peAgg(m){var D=pe.doc.data,T=(pe.tx||[]).filter(function(t){return !t.pending&&peMk(t)===m}),rc=T.filter(function(t){return t.amount>0&&peCat(t)==='Revenu'}),
   r2=function(v){return Math.round(v*100)/100},inc=rc.length?r2(sum(rc,function(t){return t.amount})):r2(sum(D.incomes,function(x){return num(x.amount)})),fx=0,foy=0,vr=0;
   T.forEach(function(t){if(t.amount>=0)return;var c=peCat(t),a=-t.amount;if(peIsF(c))foy+=a;else if(c==='Fixe'||c==='Abonnements')fx+=a;else if(c!=='Ignorer'&&c!=='Revenu')vr+=a});
-  fx=r2(fx);if(!(fx>0))fx=r2(sum(D.fixed,function(x){return num(x.amount)}));foy=r2(foy);vr=r2(vr);
+  fx=r2(fx);if(!(fx>0))fx=r2(sum(peFxIn(),function(x){return num(x.amount)}));foy=r2(foy);vr=r2(vr);
   return {has:T.length>0,inc:inc,fix:fx,foy:foy,vr:vr,reste:r2(inc-fx-foy-vr)}}
 function peBars(vals,cur,goodUp){var mx=0;vals.forEach(function(v){mx=Math.max(mx,Math.abs(v))});mx=mx||1;var W=100/vals.length;
   return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:46px;display:block" aria-hidden="true">'+vals.map(function(v,i){var h=Math.max(1.5,Math.abs(v)/mx*30),neg=v<0,i2=i===vals.length-1,c=(goodUp===undefined)?(neg?'var(--bad)':'var(--good)'):'var(--accent)';
@@ -2005,9 +2005,10 @@ function upList(){
   if(!upd||!upd.tx)return [];
   var L=upd.tx.filter(function(t){return t&&t.date&&isFinite(t.amount)}).sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0)}),occ={};
   L.forEach(function(t){var b=t.date+'|'+t.label+'|'+t.amount;occ[b]=(occ[b]||0)+1;t.uid=b+'|'+occ[b]});return L}
+function peFxIn(){var D=pe.doc.data;return D.fixed.filter(function(x){return (!x.from||x.from<=ym)&&(!x.to||x.to>=ym)})}
 function peFixMap(){var D=pe.doc.data,T=peMonth().filter(function(t){return t.amount<0}),used={},res={};
   T.forEach(function(t){var o=D.tx[t.id];if(o&&o.link&&o.link.k==='fix'&&!res[o.link.id]){res[o.link.id]=t;used[t.id]=1}});
-  D.fixed.forEach(function(x){if(res[x.id]||D.off[ym+':'+x.id])return;var a=num(x.amount);
+  peFxIn().forEach(function(x){if(res[x.id]||D.off[ym+':'+x.id])return;var a=num(x.amount);
     for(var i=0;i<T.length;i++){var t=T[i],c=peCat(t),o=D.tx[t.id];if(used[t.id]||(o&&o.link))continue;
       if((c==='Fixe'||c==='Abonnements')&&Math.abs(-t.amount-a)<0.015){res[x.id]=t;used[t.id]=1;break}}});
   return res}
@@ -2022,8 +2023,8 @@ function peUpMark(t,on){var key=upMonthOf(t.date),m=editM(key),ex;m.bankSeen=m.b
   nsSync();touch('m-'+key)}
 function peRelSel(t){var D=pe.doc.data,o=D.tx[t.id],lk=o&&o.link,v=lk?(lk.k==='fix'?'fix:'+lk.id:'adv'):'';
   return '<select data-perel="'+esc(t.id)+'" aria-label="Relier l’opération"><option value="">Relier à…</option>'+
-    D.fixed.filter(function(x){return !D.off[ym+':'+x.id]}).map(function(x){return '<option value="fix:'+esc(x.id)+'"'+(v==='fix:'+x.id?' selected':'')+'>Charge fixe · '+esc(x.label)+'</option>'}).join('')+
-    '<option value="adv"'+(v==='adv'?' selected':'')+'>Avance pour '+esc(nsName('l'))+' (50 %)</option></select>'}
+    peFxIn().filter(function(x){return !D.off[ym+':'+x.id]}).map(function(x){return '<option value="fix:'+esc(x.id)+'"'+(v==='fix:'+x.id?' selected':'')+'>Charge fixe · '+esc(x.label)+'</option>'}).join('')+
+    '<option value="adv"'+(v==='adv'?' selected':'')+'>Avance pour '+esc(nsName('l'))+' (50 %)</option></select>'+(v.indexOf('fix:')===0?'':'<button type="button" class="btn mini" data-pe="mkfix" data-id="'+esc(t.id)+'">＋ Charge fixe</button>')}
 function peRestoSec(){var D=pe.doc.data,R=peRestoStat(),ok=upd&&upd.balance!=null,st=upStamp(),h='<section class="card"><h2>Ticket-resto</h2>';
   if(!ok)h+='<div class="empty">Aucun relevé Up pour le moment : lance le raccourci « Synchro Up » sur le PC.</div>';
   else h+='<div class="line"><span>Solde de la carte'+(st?' <span class="small muted">'+st+'</span>':'')+'</span><span class="n">'+fmt(upd.balance)+'</span></div>'+(upd.daily!=null?'<div class="line"><span>Disponible aujourd’hui</span><span class="n">'+fmt(upd.daily)+'</span></div>':'');
@@ -2057,14 +2058,14 @@ function vPerso(M){
     inc=rcv.length?rcvS:Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,fix=Math.round(sum(D.fixed,function(x){return num(x.amount)})*100)/100,
     deb=T.filter(function(t){return t.amount<0}),by={},foy=0,vr=0,todo=0,fixT=0,foyP=0,foyC=0,foyE=0;
   deb.forEach(function(t){var c=peCat(t),a=Math.abs(t.amount);by[c]=(by[c]||0)+a;if(peIsF(c)){foy+=a;if(c==='Foyer·Charge')foyC+=a;else if(c==='Foyer·Extra')foyE+=a;else foyP+=a}else if(c==='Fixe'||c==='Abonnements')fixT+=a;else if(c!=='Ignorer'&&c!=='Revenu')vr+=a;if(!pe.doc.data.tx[t.id]&&!peRuled(t))todo++});
-  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;var FMv=peFixMap();fix=Math.round((fixT+sum(D.fixed.filter(function(x){return !D.off[ym+':'+x.id]&&!FMv[x.id]}),function(x){return num(x.amount)}))*100)/100;var FYd=peFoy(),pafLeft=(FYd.has&&FYd.due>0)?Math.max(0,Math.round((FYd.due-foyP)*100)/100):0,reste=Math.round((inc-fix-foy-vr-pafLeft)*100)/100;
+  foy=Math.round(foy*100)/100;vr=Math.round(vr*100)/100;fixT=Math.round(fixT*100)/100;var FMv=peFixMap();fix=Math.round((fixT+sum(peFxIn().filter(function(x){return !D.off[ym+':'+x.id]&&!FMv[x.id]}),function(x){return num(x.amount)}))*100)/100;var FYd=peFoy(),pafLeft=(FYd.has&&FYd.due>0)?Math.max(0,Math.round((FYd.due-foyP)*100)/100):0,reste=Math.round((inc-fix-foy-vr-pafLeft)*100)/100;
   var vu=st&&st.valid_until?new Date(st.valid_until):null,days=vu?Math.ceil((vu-new Date())/864e5):null,warn=st&&st.linked&&(st.expired||(days!=null&&days<=10));
   if(M==='syn')h+=peTile(st,T,days,warn);
   if(pe.histFb)h+='<div class="note warn">La banque refuse l’historique demandé : opérations limitées à 90 jours (depuis le '+esc(pe.hist||'')+').</div>';
   if(warn)h+='<div class="note warn">Consentement bancaire '+(st.expired?'expiré':'bientôt expiré')+' : onglet Compte pour le renouveler.</div>';
   var PP=pePeriod(ym);
   if(sub==='syn'){
-    var FMa=peFixMap(),unpaid=Math.round(sum(D.fixed.filter(function(x){return !D.off[ym+':'+x.id]&&!FMa[x.id]&&!D.paid[ym+':'+x.id]}),function(x){return num(x.amount)})*100)/100,
+    var FMa=peFixMap(),unpaid=Math.round(sum(peFxIn().filter(function(x){return !D.off[ym+':'+x.id]&&!FMa[x.id]&&!D.paid[ym+':'+x.id]}),function(x){return num(x.amount)})*100)/100,
       pafD=(FYd.has&&FYd.due>0)?FYd.due:0,fixR=Math.round((fix+pafD)*100)/100;unpaid=Math.round((unpaid+pafLeft)*100)/100;
     var paidF=Math.round(Math.max(0,fixR-unpaid)*100)/100,fp=fixR>0?paidF/fixR*100:0,fk=(fixR>0&&unpaid<0.005)?'g':'o',
       RS=peRestoStat(),rB=RS.B,rk=rB>0?(((rB-RS.S)/rB*100>=75)?'g':(((rB-RS.S)/rB*100>=25)?'o':'r')):'g',
@@ -2099,15 +2100,15 @@ function vPerso(M){
       adOpen('peinc','Ajouter un revenu prévu')+'<form class="form" data-peform="inc"><input type="text" name="label" placeholder="Libellé (ex. Salaire)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>';
     var FYf=peFoy(),pafD=(FYf.has&&FYf.due>0)?FYf.due:0,pafOk=pafD>0&&foyP>=pafD-0.015,pafL=pafD>0?Math.max(0,Math.round((pafD-foyP)*100)/100):0,
       pafRow=pafD>0?'<div class="line"><span class="t"><span class="nm"><b>'+(pafOk?'☑':'☐')+' PAF Fortuneo · Hasina</b></span><span class="tags"><span class="tag">auto · calculée</span>'+(foyP>0?'<span class="tag">virée '+fmt(foyP)+'</span>':'')+'</span></span><span class="n">'+fmt(pafD)+'</span></div>':'',
-      FMf=peFixMap(),act=D.fixed.filter(function(x){return !D.off[ym+':'+x.id]}),isP=function(x){return !!D.paid[ym+':'+x.id]||!!FMf[x.id]},
+      FMf=peFixMap(),FXa=peFxIn(),act=FXa.filter(function(x){return !D.off[ym+':'+x.id]}),isP=function(x){return !!D.paid[ym+':'+x.id]||!!FMf[x.id]},
       totF=Math.round((sum(act,function(x){return num(x.amount)})+pafD)*100)/100,leftF=Math.round((sum(act.filter(function(x){return !isP(x)}),function(x){return num(x.amount)})+pafL)*100)/100,
-      rowsF=D.fixed.map(function(x,i){var kk=ym+':'+x.id,off=!!D.off[kk],hit=FMf[x.id],pd=isP(x);
-        return '<div class="line'+(off?' is-off':'')+'"><span class="t tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span class="nm"><b>'+(off?'⊘':(pd?'☑':'☐'))+' '+esc(x.label)+'</b></span><span class="tags">'+(off?'<span class="tag">Exclu</span>':(hit?'<span class="tag">SG · '+esc(String(hit.date||'').slice(5).split('-').reverse().join('/'))+'</span>':(pd?'<span class="tag">payé</span>':'')))+'</span></span>'+
-          '<span class="n">'+fmt(x.amount)+' <button class="x" data-pe="fmv" data-d="-1" data-id="'+x.id+'" aria-label="Monter"'+(i===0?' disabled':'')+'>▲</button><button class="x" data-pe="fmv" data-d="1" data-id="'+x.id+'" aria-label="Descendre"'+(i===D.fixed.length-1?' disabled':'')+'>▼</button><button class="x" data-pe="foff" data-id="'+x.id+'" aria-label="Exclure ou réintégrer ce mois">⊘</button><button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''),
+      rowsF=FXa.map(function(x,i){var kk=ym+':'+x.id,off=!!D.off[kk],hit=FMf[x.id],pd=isP(x);
+        return '<div class="line'+(off?' is-off':'')+'"><span class="t tap" role="button" data-pe="tgl" data-id="'+x.id+'"><span class="nm"><b>'+(off?'⊘':(pd?'☑':'☐'))+' '+esc(x.label)+'</b></span><span class="tags">'+(off?'<span class="tag">Exclu</span>':(x.to?'<span class="tag">jusqu’à '+esc(x.to)+'</span>':(x.from?'<span class="tag">depuis '+esc(x.from)+' · sans fin</span>':''))+(hit?'<span class="tag">SG · '+esc(String(hit.date||'').slice(5).split('-').reverse().join('/'))+'</span>':(pd?'<span class="tag">payé</span>':'')))+'</span></span>'+
+          '<span class="n">'+fmt(x.amount)+' <button class="x" data-pe="fmv" data-d="-1" data-id="'+x.id+'" aria-label="Monter"'+(i===0?' disabled':'')+'>▲</button><button class="x" data-pe="fmv" data-d="1" data-id="'+x.id+'" aria-label="Descendre"'+(i===FXa.length-1?' disabled':'')+'>▼</button><button class="x" data-pe="fend" data-id="'+x.id+'" aria-label="Date de fin">◷</button><button class="x" data-pe="foff" data-id="'+x.id+'" aria-label="Exclure ou réintégrer ce mois">⊘</button><button class="x" data-pe="delfix" data-id="'+x.id+'" aria-label="Supprimer">×</button></span></div>'}).join(''),
       orph=deb.filter(function(t){var c=peCat(t);return (c==='Fixe'||c==='Abonnements')&&!Object.keys(FMf).some(function(q){return FMf[q].id===t.id})});
     h+='<section class="card"><h2>Charges fixes · '+esc(ymLabel(ym))+'</h2><div class="small muted" style="margin:-4px 0 8px">'+(act.filter(isP).length+(pafOk?1:0))+' / '+(act.length+(pafD>0?1:0))+' réglées · reste '+fmt(leftF)+' sur '+fmt(totF)+' · reprises chaque mois · ⊘ = exclure ce mois-ci</div>'+pafRow+(rowsF||(pafRow?'':'<div class="empty">Aucune charge saisie.</div>'))+'</section>'+
-      adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
-      (orph.length?'<section class="card"><h2>Prélèvements sans charge prévue</h2><div class="small muted" style="margin:-4px 0 8px">Opérations taguées Fixe / Abonnements qui ne correspondent à aucune ligne ci-dessus.</div>'+orph.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+'</span></div>'}).join('')+'</section>':'');
+      adOpen('pefix','Ajouter une charge fixe prévue')+'<form class="form" data-peform="fix"><input type="text" name="label" placeholder="Libellé (ex. Loyer perso)" required class="full" aria-label="Libellé"><input type="text" name="amount" inputmode="decimal" placeholder="Montant mensuel" required aria-label="Montant"><label class="small muted full" style="display:block">Dernier mois (vide = sans fin)<input type="month" name="to" aria-label="Dernier mois"></label><button class="btn primary add" type="submit">Ajouter</button></form></div></section>'+
+      (orph.length?'<section class="card"><h2>Prélèvements sans charge prévue</h2><div class="small muted" style="margin:-4px 0 8px">Opérations taguées Fixe / Abonnements qui ne correspondent à aucune ligne ci-dessus.</div>'+orph.map(function(t){return '<div class="line"><span class="t"><span class="nm">'+esc(t.label||'')+'</span><span class="tags"><span class="tag">'+esc(peCat(t))+'</span><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span></span></span><span class="n neg">'+fmt(t.amount)+' <button class="btn mini" data-pe="mkfix" data-id="'+esc(t.id)+'">＋ Charge fixe</button></span></div>'}).join('')+'</section>':'');
 
   }
   return h}
@@ -2122,8 +2123,14 @@ document.addEventListener('click',function(e){
   else if(a==='delinc'){D.incomes=D.incomes.filter(function(x){return x.id!==t.dataset.id});peSave()}
   else if(a==='delfix'){e.stopPropagation();D.fixed=D.fixed.filter(function(x){return x.id!==t.dataset.id});peSave()}
   else if(a==='tgl'){if(e.target.closest('[data-pe="delfix"]'))return;var k=ym+':'+t.dataset.id;if(D.paid[k])delete D.paid[k];else D.paid[k]=1;peSave()}
+  else if(a==='mkfix'){var tt=(pe.tx||[]).filter(function(x){return x.id===t.dataset.id})[0];if(!tt)return;var mo=peMk(tt),r=prompt('Dernier mois de ce prélèvement (AAAA-MM).\nLaisse vide = sans fin.','');if(r===null)return;r=r.trim();
+    if(r&&(!/^\d{4}-(0[1-9]|1[0-2])$/.test(r)||r<mo)){alert('Format attendu : AAAA-MM, pas avant '+mo+' (ex. 2027-03).');return}
+    var nid=uid(),nf={id:nid,label:String(tt.label||'Prélèvement').slice(0,48),amount:Math.round(Math.abs(tt.amount)*100)/100,from:mo};if(r)nf.to=r;D.fixed.push(nf);
+    var o=D.tx[tt.id]||{cat:peCat(tt)};o.link={k:'fix',id:nid};if(o.cat!=='Fixe'&&o.cat!=='Abonnements')o.cat='Fixe';D.tx[tt.id]=o;peSave()}
+  else if(a==='fend'){var fx=D.fixed.filter(function(x){return x.id===t.dataset.id})[0];if(!fx)return;var r2=prompt('Dernier mois (AAAA-MM).\nLaisse vide = sans fin.',fx.to||'');if(r2===null)return;r2=r2.trim();
+    if(r2&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(r2)){alert('Format attendu : AAAA-MM (ex. 2027-03).');return}if(r2)fx.to=r2;else delete fx.to;peSave()}
   else if(a==='foff'){var ko=ym+':'+t.dataset.id;if(D.off[ko])delete D.off[ko];else D.off[ko]=1;peSave()}
-  else if(a==='fmv'){var fid=t.dataset.id,fi=-1;D.fixed.forEach(function(x,j){if(x.id===fid)fi=j});var fj=fi+(+t.dataset.d);if(fi>=0&&fj>=0&&fj<D.fixed.length){var ft=D.fixed[fi];D.fixed[fi]=D.fixed[fj];D.fixed[fj]=ft;peSave()}}
+  else if(a==='fmv'){var fid=t.dataset.id,FA=peFxIn(),ia=-1;FA.forEach(function(x,j){if(x.id===fid)ia=j});var nb=FA[ia+(+t.dataset.d)];if(ia>=0&&nb){var fi=-1,fj=-1;D.fixed.forEach(function(x,j){if(x.id===fid)fi=j;if(x.id===nb.id)fj=j});var ft=D.fixed[fi];D.fixed[fi]=D.fixed[fj];D.fixed[fj]=ft;peSave()}}
   else if(a==='upp'){var uu=t.dataset.uid,tt=upList().filter(function(x){return x.uid===uu})[0];if(!tt)return;var on=!D.up[uu];if(on)D.up[uu]=1;else delete D.up[uu];peUpMark(tt,on);peSave()}
 });
 document.addEventListener('change',function(e){
@@ -2143,7 +2150,7 @@ document.addEventListener('submit',function(e){
   if(k==='unlock'){pe.key=String(fd.get('password')||'');try{localStorage.setItem('budget-perso-key',pe.key)}catch(x){}pe.loaded=true;pe.msg='';peLoad();return}
   var label=String(fd.get('label')||'').trim().slice(0,48),amount=num(fd.get('amount'));
   if(k==='inc'&&label&&amount>0){D.incomes.push({id:uid(),label:label,amount:amount});peSave()}
-  else if(k==='fix'&&label&&amount>0){D.fixed.push({id:uid(),label:label,amount:amount});peSave()}
+  else if(k==='fix'&&label&&amount>0){var to=String(fd.get('to')||'').trim(),nf=({id:uid(),label:label,amount:amount});if(/^\d{4}-\d{2}$/.test(to))nf.to=to;D.fixed.push(nf);peSave()}
   else if(k==='rest'){var rv=num(fd.get('budget'));if(rv>0)D.env['Ticket-resto']=rv;else delete D.env['Ticket-resto'];peSave()}
   else if(k==='env'){PE_CATS.forEach(function(c){var v=num(fd.get('e_'+c));if(v>0)D.env[c]=v;else delete D.env[c]});peSave()}
 });
