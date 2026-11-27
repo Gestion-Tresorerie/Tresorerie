@@ -800,7 +800,7 @@ function vHist(){
   var closed=sy.filter(function(r){return !r.open});
   var tot={rev:sum(sy,function(r){return r.c.creditsReal}),fix:sum(sy,function(r){return r.c.fixedPaid}),ext:sum(sy,function(r){return r.c.extrasTotal}),bal:sum(closed,function(r){return hval(r)})};
   var avg=closed.length?sum(closed,function(r){return hval(r)})/closed.length:null;
-  var cats={};sy.forEach(function(r){r.m.extras.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.amount})});
+  var cats={};sy.forEach(function(r){r.m.extras.forEach(function(e){if(e.off)return;cats[e.cat]=(cats[e.cat]||0)+e.amount})});
   var catRows=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a]});
   var cmax=catRows.length?cats[catRows[0]]:0;
   var list=rows.slice().reverse().map(function(r){
@@ -823,7 +823,7 @@ function vHist(){
 }
 
 var lk={on:false,tx:null,sel:{}};
-function lkLines(m){return (m.extras||[]).filter(function(e){return !e.bankId&&!e.grp})}
+function lkLines(m){return (m.extras||[]).filter(function(e){return !e.bankId&&!e.grp&&!e.off})}
 function lkXt(m){return (m.fixed||[]).filter(function(x){return !x.off&&isX(x)&&!x.paid&&!x.grp&&!(m.carry&&m.carry[x.id])})}
 function lkUnc(m){return (bank.tx||[]).filter(function(t){return t.id&&!t.pending&&t.amount<0&&bkMonthKey(t)===ym&&!bsExtra(t)&&!bsGrp(t).length})}
 function lkA(x){return x.amount!=null?x.amount:x.planned}
@@ -948,7 +948,7 @@ function vFix(m,c,xt){
 function restoOf(m){return typeof m.resto==='number'?m.resto:(typeof state.config.resto==='number'?state.config.resto:60)}
 function vDep(m,c){
   var today=d0.toISOString().slice(0,10); var def=today.slice(0,7)===ym?today:ym+'-01';
-  var ex=m.extras.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
+  var ex=m.extras.filter(function(e){return !e.off}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))});
   var copts=CATS.map(function(k){return '<option>'+esc(k)+'</option>'}).join('');
   var list=ex.map(function(e){
     return '<div class="line tap'+(e.off?' is-off':'')+'" role="button" data-ed="open" data-id="'+e.id+'"><span class="t"><span class="nm">'+esc(e.label)+'</span><span class="tags"><span class="tag">'+esc(e.date||'')+'</span><span class="tag">'+esc(e.cat)+'</span>'+(e.off?'<span class="tag">Exclu</span>':'')+((e.tot||e.from||e.bk)?'<span class="tag tb">'+(e.tot?'réparti · Fortuneo '+fmt(e.tot):(e.from?'issu d’une opération Fortuneo':'relié Fortuneo '+fmt(e.bk)))+'</span>':'')+(e.grp?'<span class="tag tw">débit groupé ('+m.extras.filter(function(y){return y.grp===e.grp}).length+' achats)</span>':'')+(e.grp&&e.btx?'<button class="btn mini lnk" data-lk="undo" data-id="'+e.id+'">Défaire le rapprochement</button>':'')+'</span></span>'+
@@ -2022,9 +2022,11 @@ function peFixMap(){var D=pe.doc.data,T=peMonth().filter(function(t){return t.am
     for(var i=0;i<T.length;i++){var t=T[i],c=peCat(t),o=D.tx[t.id];if(used[t.id]||(o&&o.link))continue;
       if((c==='Fixe'||c==='Abonnements')&&Math.abs(-t.amount-a)<0.015){res[x.id]=t;used[t.id]=1;break}}});
   return res}
-function peRestoStat(){var D=pe.doc.data,B=num(D.env['Ticket-resto']),L=upList().filter(function(t){return t.amount<0&&!t.refused&&upMonthOf(t.date)===ym}),
-  mine=L.filter(function(t){return D.up[t.uid]}),S=Math.round(sum(mine,function(t){return -t.amount})*100)/100;
-  return {B:B,S:S,left:Math.round((B-S)*100)/100,L:L,mine:mine}}
+function peRestoStat(){var D=pe.doc.data,L=upList().filter(function(t){return t.amount<0&&!t.refused&&upMonthOf(t.date)===ym}),
+  mine=L.filter(function(t){return D.up[t.uid]}),S=Math.round(sum(mine,function(t){return -t.amount})*100)/100,
+  c=calc(getV(ym)),FL=Math.round((c.restoPlanned-c.restoSpent)*100)/100,bal=(upd&&upd.balance!=null)?num(upd.balance):null,
+  left=bal==null?0:Math.round((bal-Math.max(0,FL))*100)/100;
+  return {bal:bal,FL:FL,B:bal==null?0:Math.round((left+S)*100)/100,S:S,left:left,L:L,mine:mine}}
 /* un achat Up « perso » sort du budget ticket-resto du foyer (ligne conservée, marquée Exclu) */
 function peUpMark(t,on){var key=upMonthOf(t.date),m=editM(key),ex;m.bankSeen=m.bankSeen||{};m.extras=m.extras||[];
   m.extras.forEach(function(e){if(e.upId===t.uid)ex=e});
@@ -2035,14 +2037,13 @@ function peRelSel(t){var D=pe.doc.data,o=D.tx[t.id],lk=o&&o.link,v=lk?(lk.k==='f
   return '<select data-perel="'+esc(t.id)+'" aria-label="Relier l’opération"><option value="">Relier à…</option>'+
     peFxIn().filter(function(x){return !D.off[ym+':'+x.id]}).map(function(x){return '<option value="fix:'+esc(x.id)+'"'+(v==='fix:'+x.id?' selected':'')+'>Charge fixe · '+esc(x.label)+'</option>'}).join('')+
     '<option value="adv"'+(v==='adv'?' selected':'')+'>Avance pour '+esc(nsName('l'))+' (50 %)</option></select>'+(v.indexOf('fix:')===0?'':'<button type="button" class="btn mini" data-pe="mkfix" data-id="'+esc(t.id)+'">＋ Charge fixe</button>')}
-function peRestoSec(){var D=pe.doc.data,R=peRestoStat(),ok=upd&&upd.balance!=null,st=upStamp(),h='<section class="card"><h2>Ticket-resto</h2>';
-  if(!ok)h+='<div class="empty">Aucun relevé Up pour le moment : lance le raccourci « Synchro Up » sur le PC.</div>';
-  else h+='<div class="line"><span>Solde de la carte'+(st?' <span class="small muted">'+st+'</span>':'')+'</span><span class="n">'+fmt(upd.balance)+'</span></div>'+(upd.daily!=null?'<div class="line"><span>Disponible aujourd’hui</span><span class="n">'+fmt(upd.daily)+'</span></div>':'');
-  h+='<div class="line"><span>Budget perso du mois</span><span class="n">'+(R.B>0?fmt(R.B):'—')+'</span></div><div class="line"><span>Dépensé perso</span><span class="n">'+fmt(R.S)+'</span></div>'+
-    (R.B>0?'<div class="line"><span><b>Reste perso</b></span><span class="n '+(R.left<0?'neg':'pos')+'"><b>'+fmt(R.left)+'</b></span></div>':'')+
-    '<div class="grp"><b>Achats Up · '+esc(ymLabel(ym))+' — « Perso » les sort du budget ticket-resto du foyer</b></div>'+
-    (R.L.length?R.L.slice().reverse().map(function(t){var on=!!D.up[t.uid];return '<div class="line"><span class="t"><span class="nm">'+esc(t.label)+'</span><span class="tags"><span class="tag">'+esc(String(t.date).slice(5).split('-').reverse().join('/'))+'</span><span class="tag">'+(on?'perso':'foyer')+'</span></span></span><span class="n">'+fmt(-t.amount)+' <button class="btn mini'+(on?' primary':'')+'" data-pe="upp" data-uid="'+esc(t.uid)+'">'+(on?'Perso ✓':'Perso')+'</button></span></div>'}).join(''):'<div class="empty">Aucun achat Up ce mois-ci.</div>')+'</section>'+
-    adOpen('perest','Budget ticket-resto perso')+'<form class="form" data-peform="rest"><input type="text" name="budget" inputmode="decimal" placeholder="Budget mensuel perso (0 = aucun)" value="'+(R.B>0?inp(R.B):'')+'" class="full" aria-label="Budget ticket-resto perso"><button class="btn primary add" type="submit">Enregistrer</button></form></div></section>';
+function peRestoSec(){var R=peRestoStat(),st=upStamp(),h='<section class="card"><h2>Ticket-resto · Hasina</h2>';
+  if(R.bal==null)return h+'<div class="empty">Aucun relevé Up pour le moment : lance le raccourci « Synchro Up » sur le PC.</div></section>';
+  h+='<div class="line"><span>Solde total de la carte'+(st?' <span class="small muted">'+st+'</span>':'')+'</span><span class="n">'+fmt(R.bal)+'</span></div>'+
+    '<div class="line"><span>− Reste budget ticket-resto Fortuneo</span><span class="n">'+fmt(Math.max(0,R.FL))+'</span></div>'+
+    '<div class="line"><span><b>Reste Hasina</b></span><span class="n '+(R.left<0?'neg':'pos')+'"><b>'+fmt(R.left)+'</b></span></div>'+
+    '<div class="line"><span>Déjà dépensé par Hasina ce mois-ci</span><span class="n">'+fmt(R.S)+'</span></div>'+
+    '<div class="small muted" style="margin-top:6px">Tague un achat « Hasina » dans la liste ci-dessous : il sort du budget ticket-resto Fortuneo et de sa liste.</div></section>';
   return h}
 function peEnvSec(by){var D=pe.doc.data,rows=PE_CATS.filter(function(k){return num(D.env[k])>0||(by[k]||0)>0}).map(function(k){return [k,Math.round((by[k]||0)*100)/100,num(D.env[k])]}).sort(function(a,b){return b[1]-a[1]}),sc=0;
   rows.forEach(function(r){sc=Math.max(sc,r[1],r[2])});sc=sc||1;
@@ -2097,10 +2098,13 @@ function vPerso(M){
     var fl=deb.filter(function(t){return peIsF(peCat(t))});
     h+=peRestoSec()+peEnvSec(by);
     var nP=T.filter(function(t){return !pe.doc.data.tx[t.id]&&!peRuled(t)}).length;
-    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(T.length?T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
+    var OPS=T.map(function(t){var c=peCat(t),man=!!pe.doc.data.tx[t.id],pend=!man&&!peRuled(t);
       return '<div class="pop"><div class="pop1"><span class="nm">'+(pend?'<i class="pdot" title="À valider"></i>':'')+esc(t.label||'')+'</span><span class="n '+(t.amount<0?'neg':'pos')+'">'+fmt(t.amount)+'</span></div>'+
         '<div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+(man?'':' · auto')+'</span>'+
-        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div>'+(t.amount<0?'<div class="pop2">'+peRelSel(t)+'</div>':'')+'</div>'}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
+        '<select data-pecat="'+esc(t.id)+'" aria-label="Catégorie">'+PE_CATS.concat(PE_SPEC).map(function(k){return '<option'+(k===c?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'+(pend?'<button type="button" class="btn mini" data-pe="ok" data-id="'+esc(t.id)+'" aria-label="Valider la catégorie">✓</button>':'')+'</div>'+(t.amount<0?'<div class="pop2">'+peRelSel(t)+'</div>':'')+'</div>'}).map(function(x,i){return [String(T[i].date||''),x]});
+    peRestoStat().L.forEach(function(t){var on=!!pe.doc.data.up[t.uid];OPS.push([t.date,'<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label)+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date).slice(5).split('-').reverse().join('/'))+' · Ticket-resto'+(on?' · Hasina':' · Fortuneo')+'</span><button type="button" class="btn mini'+(on?' primary':'')+'" data-pe="upp" data-uid="'+esc(t.uid)+'">'+(on?'Hasina ✓':'Hasina')+'</button></div></div>'])});
+    OPS.sort(function(x,y){return x[0]<y[0]?1:(x[0]>y[0]?-1:0)});
+    h+='<section class="card"><h2>Opérations · '+esc(ymLabel(ym))+'</h2>'+(nP?'<div class="note"><i class="pdot"></i> '+nP+' à valider · catégorie devinée automatiquement <button class="btn mini" data-pe="okall">Tout valider</button></div>':'')+(OPS.length?OPS.map(function(o){return o[1]}).join(''):'<div class="empty">'+(pe.tx?'Aucune opération ce mois-ci.':'Aucune donnée.')+'</div>')+'</section>';
     h+='<section class="card"><h2>Détail des virements</h2>'+(fl.length?fl.map(function(t){var c=peCat(t),sel=String(c);return '<div class="pop"><div class="pop1"><span class="nm">'+esc(t.label||'')+'</span><span class="n neg">'+fmt(t.amount)+'</span></div><div class="pop2"><span class="tag">'+esc(String(t.date||'').slice(5).split('-').reverse().join('/'))+'</span><select data-pecat="'+esc(t.id)+'" aria-label="Type de virement">'+['Foyer','Foyer·Charge','Foyer·Extra'].map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k==='Foyer'?'PAF':k==='Foyer·Charge'?'Charge du foyer':'Extra du foyer')+'</option>'}).join('')+'</select></div></div>'}).join(''):'<div class="empty">Aucun virement vers le joint ce mois-ci.</div>')+'</section>';
   }else{
     var D=pe.doc.data;
