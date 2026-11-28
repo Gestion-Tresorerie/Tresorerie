@@ -2110,12 +2110,12 @@ function vPerso(M){
     var OTH='<section class="card"><h2>Autres virements vers le joint</h2>'+R('Charges fixes du foyer',fmt(Math.round(foyC*100)/100))+R('Extras du foyer',fmt(Math.round(foyE*100)/100))+'<p class="small muted" style="margin:8px 0 0">Total versé au foyer : '+fmt(foy)+'</p></section>';
     var planI=Math.round(sum(D.incomes,function(x){return num(x.amount)})*100)/100,habI=planI,habSrc='revenus prévus';
     if(!(habI>0)){var hv=[1,2,3].map(function(k){var a=peAgg(shiftYm(ym,-k));return a.has&&a.inc>0?a.inc:null}).filter(function(v){return v!=null});if(hv.length){habI=Math.round(sum(hv,function(v){return v})/hv.length*100)/100;habSrc='moyenne des '+hv.length+' mois précédents'}else habSrc=''}
-    var toCome=Math.max(0,Math.round((habI-rcvS)*100)/100),balS=pe.bal&&pe.bal.amount!=null?num(pe.bal.amount):null,simR=balS==null?null:Math.round((balS+toCome-unpaid)*100)/100,
+    var toCome=Math.max(0,Math.round((habI-rcvS)*100)/100),balS=pe.bal&&pe.bal.amount!=null?num(pe.bal.amount):null,othS=FYd.othDone>0.005?FYd.othDone:0,simR=balS==null?null:Math.round((balS+toCome-unpaid-othS)*100)/100,
       SIM='<section class="card"><h2>Simulation · après les charges fixes</h2>'+(balS==null?'<div class="empty">Solde SG indisponible.</div>':
         '<div class="big '+(simR<0?'neg':'pos')+'" style="font-size:30px">'+fmt(simR)+'</div><div class="small muted" style="margin:2px 0 8px">il te restera une fois toutes les charges fixes passées</div>'+
         R('Solde actuel SG',fmt(balS))+
         R('+ Revenus à venir',fmt(toCome))+(habI>0?'<div class="small muted" style="margin:-2px 0 6px">Habituel '+fmt(habI)+(habSrc?' ('+habSrc+')':'')+' · déjà reçu '+fmt(rcvS)+'</div>':'<div class="small muted" style="margin:-2px 0 6px">Aucun revenu habituel connu : saisis-le dans « Revenus du mois » (onglet Fixe).</div>')+
-        R('− Charges fixes restantes',fmt(unpaid))+'<div class="small muted" style="margin-top:6px">Hors dépenses variables et enveloppes à venir.</div>')+'</section>';
+        R('− Charges fixes restantes',fmt(unpaid))+(othS>0?R('− Remboursements à régler',fmt(othS))+'<div class="small muted" style="margin:-2px 0 6px">Extras, 50/50 et Loisirs dus à Linda (non réglés)</div>':'')+'<div class="small muted" style="margin-top:6px">Hors dépenses variables et enveloppes à venir.</div>')+'</section>';
     h+=PD.hero+PD.al+RINGS+SIM+(FY.has?'':'<div class="note warn">Aucune donnée du budget foyer pour ce mois : la PAF attendue ci-dessous n’est pas fiable.</div>')+
       '<section class="card"><h2>PAF · '+esc(ymLabel(ym))+'</h2>'+R('Attendue (onglet PAF du foyer)',fmt(due))+'<div class="small muted" style="margin:-2px 0 6px">1er du mois '+fmt(FY.first)+' · le 10 '+fmt(FY.second)+(FY.known?'':' · revenus non renseignés (50/50)')+'</div>'+R('Virée depuis la SG',fmt(pafS))+
       R('Écart SG − attendue',G(-gap),Math.abs(gap)<0.015?'pos':'neg')+'</section>';
